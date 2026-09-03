@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "source": "RogueLife/Teni Podgorya concept art generated in chat",
+  "heroes": {
+    "arator": "assets/heroes/arator.webp",
+    "baldin": "assets/heroes/baldin.webp",
+    "faelas": "assets/heroes/faelas.webp",
+    "mithrandir": "assets/heroes/mithrandir.webp",
+    "peregrin": "assets/heroes/peregrin.webp"
+  },
+  "enemies": {
+    "goblin": "assets/enemies/goblin.webp",
+    "warg": "assets/enemies/warg.webp",
+    "spider": "assets/enemies/spider.webp"
+  },
+  "bosses": {
+    "grazgot": "assets/bosses/grazgot.webp"
+  },
+  "notes": [
+    "IDs exactly match js/data.js so the renderer never guesses entity identity.",
+    "Enemies without an image keep the existing geometric fallback renderer.",
+    "The current grazgot image is the cave-troll boss concept created earlier and is intentionally mapped as a temporary visual for the first boss until dedicated Grazgot art is produced."
+  ]
+}

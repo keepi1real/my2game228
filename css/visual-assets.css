@@ -1,0 +1,72 @@
+/* Visual asset integration. Без этого файла игра остаётся функциональной, но без портретов. */
+.menu-hero-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  margin: -6px 0 18px;
+}
+.menu-hero-mini {
+  min-width: 0;
+  background: #12121a;
+  border: 1px solid #2b2b3c;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 4 / 5;
+}
+.menu-hero-mini img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  filter: saturate(.9) contrast(1.04);
+}
+.menu-hero-mini::after {
+  content: '';
+  position: absolute; inset: 45% 0 0;
+  background: linear-gradient(transparent, rgba(4,4,8,.94));
+}
+.menu-hero-mini span {
+  position: absolute; z-index: 1; left: 5px; right: 5px; bottom: 5px;
+  color: #f2e6c7; text-align: center; font-size: 11px; font-weight: 700;
+  text-shadow: 0 1px 4px #000;
+}
+.hero-symbol.hero-art-thumb {
+  width: 100%; height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0 auto 8px;
+  border: 1px solid #343447;
+}
+.hero-symbol.hero-art-thumb img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; display: block;
+}
+.hero-card.selected .hero-symbol.hero-art-thumb { border-color: var(--accent); }
+.hero-card.locked .hero-symbol.hero-art-thumb img { filter: grayscale(.75) brightness(.55); }
+.hero-detail.hero-detail-with-art {
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  padding-left: 172px;
+}
+.hero-detail-art {
+  position: absolute;
+  left: 10px; top: 10px; bottom: 10px;
+  width: 145px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid #343447;
+  background: #0b0b10;
+}
+.hero-detail-art::after {
+  content: '';
+  position: absolute; inset: 0;
+  box-shadow: inset 0 0 24px rgba(0,0,0,.45);
+  pointer-events: none;
+}
+.hero-detail-art img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; display: block;
+}
+@media (max-width: 760px) {
+  .menu-hero-strip { grid-template-columns: repeat(5, 80px); overflow-x: auto; padding-bottom: 4px; }
+  .hero-detail.hero-detail-with-art { padding-left: 12px; padding-top: 174px; }
+  .hero-detail-art { left: 12px; top: 10px; height: 154px; width: 120px; bottom: auto; }
+  .hero-symbol.hero-art-thumb { height: 96px; }
+}
