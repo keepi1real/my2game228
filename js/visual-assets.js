@@ -14,12 +14,11 @@ const VISUAL_ASSETS = {
     goblin: { src: 'assets/enemies/goblin.webp', focusX: 0.44, focusY: 0.19, zoom: 2.5 },
     warg: { src: 'assets/enemies/warg.webp', focusX: 0.40, focusY: 0.45, zoom: 1.95 },
     spider: { src: 'assets/enemies/spider.webp', focusY: 0.45, zoom: 1.7 },
-    // Тот же арт пещерного тролля, что временно закреплён за Гразготом: здесь он подходит буквально.
-    troll: { src: 'assets/bosses/grazgot.webp', focusX: 0.46, focusY: 0.22, zoom: 2.0 },
+    troll: { src: 'assets/enemies/troll.webp', focusX: 0.46, focusY: 0.22, zoom: 2.0 },
   },
-  bosses: {
-    grazgot: { src: 'assets/bosses/grazgot.webp', focusX: 0.46, focusY: 0.22, zoom: 2.0 },
-  },
+  // Боссам арт пока не нарисован — они остаются на геометрическом рендере.
+  // Ключ здесь должен совпадать с id из BOSSES в js/data.js: grazgot, morgul.
+  bosses: {},
 };
 
 const GAME_ART = new Map();

@@ -11,14 +11,14 @@
   "enemies": {
     "goblin": "assets/enemies/goblin.webp",
     "warg": "assets/enemies/warg.webp",
-    "spider": "assets/enemies/spider.webp"
+    "spider": "assets/enemies/spider.webp",
+    "troll": "assets/enemies/troll.webp"
   },
-  "bosses": {
-    "grazgot": "assets/bosses/grazgot.webp"
-  },
+  "bosses": {},
   "notes": [
     "IDs exactly match js/data.js so the renderer never guesses entity identity.",
-    "Enemies without an image keep the existing geometric fallback renderer.",
-    "The current grazgot image is the cave-troll boss concept created earlier and is intentionally mapped as a temporary visual for the first boss until dedicated Grazgot art is produced."
+    "Entities without an image keep the existing geometric fallback renderer.",
+    "Framing per asset lives in js/visual-assets.js: focusX/focusY is the point of the source that lands in the token centre, zoom is how much smaller the cropped square is than the short side.",
+    "Bosses grazgot and morgul still need dedicated art; the cave-troll image now serves only the troll monster it depicts."
   ]
 }
