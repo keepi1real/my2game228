@@ -30,14 +30,26 @@ const PORTRAITS = {
 };
 
 // ---------- Спрайты ----------
-// Вырезанные персонажи на прозрачном фоне, 512x512 PNG. Появляются в фазе 2.
+// Вырезанные персонажи на прозрачном фоне, 256x256 WebP с альфа-каналом.
 // anchorY — доля высоты исходника, на которой находятся ступни (1 — самый низ картинки);
 // height  — высота фигуры на экране в пикселях;
 // flip    — можно ли зеркалить спрайт при движении влево (по умолчанию да).
 // Ключи должны совпадать с id из js/data.js.
 const SPRITES = {
-  heroes: {},
-  enemies: {},
+  heroes: {
+    arator: { src: 'assets/sprites/arator.webp', anchorY: 0.973, height: 56 },
+    baldin: { src: 'assets/sprites/baldin.webp', anchorY: 0.973, height: 46 },
+    faelas: { src: 'assets/sprites/faelas.webp', anchorY: 0.973, height: 58 },
+    mithrandir: { src: 'assets/sprites/mithrandir.webp', anchorY: 0.973, height: 56 },
+    peregrin: { src: 'assets/sprites/peregrin.webp', anchorY: 0.973, height: 42 },
+  },
+  enemies: {
+    goblin: { src: 'assets/sprites/goblin.webp', anchorY: 0.973, height: 48 },
+    warg: { src: 'assets/sprites/warg.webp', anchorY: 0.973, height: 42 },
+    spider: { src: 'assets/sprites/spider.webp', anchorY: 0.965, height: 36 },
+    troll: { src: 'assets/sprites/troll.webp', anchorY: 0.973, height: 88 },
+  },
+  // Гразготу и Моргулу арт пока не сделан — они остаются на геометрическом рендере.
   bosses: {},
 };
 
