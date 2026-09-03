@@ -15,11 +15,12 @@ const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map((m) 
 let js = scripts.map((f) => `// ---- ${f} ----\n` + fs.readFileSync(path.join(root, f), 'utf8').replace(/^'use strict';\n/, '')).join('\n');
 
 // Любые assets/*.webp, упомянутые в JS, превращаем в data URI, чтобы dist/index.html был автономным.
-const assetRefs = [...new Set(js.match(/assets\/[A-Za-z0-9_./-]+\.webp/g) || [])];
+const assetRefs = [...new Set(js.match(/assets\/[A-Za-z0-9_./-]+\.(?:webp|png)/g) || [])];
 for (const rel of assetRefs) {
   const abs = path.join(root, rel);
   if (!fs.existsSync(abs)) continue;
-  const dataUri = `data:image/webp;base64,${fs.readFileSync(abs).toString('base64')}`;
+  const mime = rel.endsWith('.png') ? 'image/png' : 'image/webp';
+  const dataUri = `data:${mime};base64,${fs.readFileSync(abs).toString('base64')}`;
   js = js.split(rel).join(dataUri);
 }
 

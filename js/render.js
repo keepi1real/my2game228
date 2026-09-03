@@ -140,21 +140,27 @@ class Renderer {
     for (const e of g.enemies) {
       if (!this.visibleAt(e.x, e.y)) continue;
       const def = e.def;
-      // Тень.
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.8, e.r * 0.9, e.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      const group = e.isBoss ? 'bosses' : 'enemies';
+      const artId = e.isBoss ? def.id : e.type;
+      // Спрайт стоит ступнями на координате, фигура центрируется на ней — тень встаёт по-разному.
+      const spriteW = this.spriteWidth(group, artId);
+      this.drawShadow(e.x, spriteW ? e.y : e.y + e.r * 0.8, spriteW || e.r * 2.65);
       const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
       let color = def.color;
       if (e.hitFlash > 0) color = '#ffffff';
       if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
       if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
-      drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : (def.shape === 'square' ? angle * 0 : 0));
-      ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(def.symbol, e.x, e.y + 1);
-      if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, e.y - e.r - 8); }
-      if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, e.y - e.r, 3, 0, Math.PI * 2); ctx.fill(); }
+      if (!this.drawArt(group, artId, e, e.r, color)) {
+        drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
+        ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(def.symbol, e.x, e.y + 1);
+      }
+      const top = this.bodyTop(group, artId, e, e.r);
+      if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, top - 8); }
+      if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, top, 3, 0, Math.PI * 2); ctx.fill(); }
       // Полоска здоровья.
       if (e.hp < e.maxHp && !e.isBoss) {
-        const w = e.r * 2 + 6, hy = e.y - e.r - 7;
+        const w = e.r * 2 + 6, hy = top - 7;
         ctx.fillStyle = '#000'; ctx.fillRect(e.x - w / 2, hy, w, 4);
         ctx.fillStyle = '#e05a4a'; ctx.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
       }
@@ -162,7 +168,8 @@ class Renderer {
   }
   drawPlayer() {
     const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 10, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+    const spriteW = this.spriteWidth('heroes', hero.id);
+    this.drawShadow(p.x, spriteW ? p.y : p.y + 10, spriteW || 32);
     // Взмах.
     if (p.swing > 0) {
       const k = p.swing / 0.14;
@@ -177,17 +184,40 @@ class Renderer {
     let color = hero.color;
     if (p.hurtFlash > 0) color = '#ff5252';
     else if (p.invulnTime > 0 && Math.floor(g.time * 20) % 2 === 0 && !p.dash) color = '#ffffff';
-    drawShape(ctx, 'circle', p.x, p.y, p.r, color);
-    ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
+    if (!this.drawArt('heroes', hero.id, p, p.r, color)) {
+      drawShape(ctx, 'circle', p.x, p.y, p.r, color);
+      ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
+    }
     // Указатель прицела.
     ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * (p.r + 9), p.y + p.aim.y * (p.r + 9)); ctx.stroke();
     ctx.restore();
+    const top = this.bodyTop('heroes', hero.id, p, p.r);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '11px sans-serif';
     for (const b of p.buffs) {
-      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.font = '11px sans-serif'; ctx.fillText('▲', p.x - 12, p.y - p.r - 8); }
-      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.font = '11px sans-serif'; ctx.fillText('▣', p.x + 12, p.y - p.r - 8); }
+      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.fillText('▲', p.x - 12, top - 8); }
+      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.fillText('▣', p.x + 12, top - 8); }
     }
-    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.font = '11px sans-serif'; ctx.fillText('☠', p.x, p.y - p.r - 10); }
+    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.fillText('☠', p.x, top - 10); }
+  }
+  // Точки расширения для визуального слоя (js/visual-assets.js).
+  // Без него обе возвращают пустоту, и рендер остаётся полностью геометрическим.
+  spriteWidth(group, id) {
+    return (typeof artSpriteWidth === 'function' && artSpriteWidth(group, id)) || null;
+  }
+  // Верх видимого тела: у спрайта это макушка, у фигуры — край окружности.
+  // По нему выставляются полоска здоровья и значки, чтобы они не легли поперёк туловища.
+  bodyTop(group, id, ent, radius) {
+    const h = typeof artSpriteHeight === 'function' ? artSpriteHeight(group, id) : null;
+    return ent.y - (h || radius);
+  }
+  drawArt(group, id, ent, radius, color) {
+    return typeof drawEntityArt === 'function' && drawEntityArt(this.ctx, group, id, ent, radius, color, this.g.time);
+  }
+  drawShadow(x, y, width) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(x, y, width * 0.34, width * 0.15, 0, 0, Math.PI * 2); ctx.fill();
   }
   drawProjectiles() {
     const ctx = this.ctx;

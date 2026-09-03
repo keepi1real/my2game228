@@ -23,7 +23,7 @@ class Player {
     this.invulnTime = 0; this.hurtFlash = 0;
     this.sneak = false;
     this.gold = 0;
-    this.swing = 0; this.swingAngle = 0;
+    this.swing = 0; this.swingAngle = 0; this.recoil = 0;
     this.hp = this.maxHp;
   }
   // ---- Статы ----
@@ -74,6 +74,7 @@ class Player {
     this.slowTime = Math.max(0, this.slowTime - dt);
     this.stunTime = Math.max(0, this.stunTime - dt);
     this.swing = Math.max(0, this.swing - dt);
+    this.recoil = Math.max(0, this.recoil - dt);
     if (this.shieldTime > 0) { this.shieldTime -= dt; if (this.shieldTime <= 0) this.shield = 0; }
     for (let i = this.buffs.length - 1; i >= 0; i--) { this.buffs[i].time -= dt; if (this.buffs[i].time <= 0) this.buffs.splice(i, 1); }
     if (this.buffStat('invisible') <= 0) this.sneak = this.sneak && this.buffs.some((b) => b.stat === 'invisible');

@@ -230,6 +230,7 @@ class Game {
   playerAttack() {
     const p = this.player, atk = this.hero.attack;
     p.attackTimer = p.attackCooldown();
+    p.recoil = RECOIL_TIME;
     let mult = 1;
     if (p.sneak) { mult = 3; p.sneak = false; p.buffs = p.buffs.filter((b) => b.stat !== 'invisible'); this.addText(p.x, p.y - 24, 'Удар из тени!', '#b0bec5'); }
     if (atk.type === 'melee') {
