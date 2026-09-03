@@ -1,7 +1,7 @@
 'use strict';
 // Точка входа: создаём игру и запускаем цикл.
 
-window.addEventListener('DOMContentLoaded', () => {
+function startGame() {
   const canvas = document.getElementById('game');
   const game = new Game(canvas);
   window.game = game;
@@ -14,4 +14,6 @@ window.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-});
+}
+if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', startGame);
+else startGame();

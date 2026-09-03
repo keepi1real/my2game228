@@ -1,0 +1,2290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тени Подгорья</title>
+<style>
+:root {
+  --bg: #0b0b10;
+  --panel: rgba(18, 18, 26, 0.96);
+  --panel-border: #3a3a52;
+  --text: #e6e2d3;
+  --muted: #9a97a8;
+  --accent: #d4a94a;
+  --accent2: #6fc3df;
+  --danger: #e05a4a;
+  --good: #7cd67c;
+  --common: #cfcfcf;
+  --rare: #5aa9ff;
+  --epic: #c77dff;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+#game-root {
+  position: relative;
+  width: 100vw; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+#game {
+  background: #000;
+  image-rendering: pixelated;
+  max-width: 100vw; max-height: 100vh;
+  aspect-ratio: 1024 / 640;
+  width: min(100vw, calc(100vh * 1024 / 640));
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}
+#ui {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+#ui > * { pointer-events: auto; }
+.overlay {
+  position: absolute; inset: 0;
+  background: rgba(4, 4, 8, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadein 0.2s ease-out;
+}
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  min-width: 420px; max-width: 900px; max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.panel h1 { margin: 0 0 6px; font-size: 34px; color: var(--accent); letter-spacing: 1px; text-align: center; }
+.panel h2 { margin: 0 0 14px; font-size: 22px; color: var(--accent); }
+.panel h3 { margin: 12px 0 6px; font-size: 16px; color: var(--accent2); }
+.subtitle { text-align: center; color: var(--muted); margin-bottom: 20px; }
+.menu-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
+button {
+  font: inherit; font-size: 16px;
+  background: #22222f; color: var(--text);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px; padding: 10px 18px;
+  cursor: pointer; transition: background 0.1s, border-color 0.1s;
+}
+button:hover { background: #2e2e42; border-color: var(--accent); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: #3f3116; border-color: var(--accent); color: #ffe6a8; font-weight: 600; }
+button.primary:hover { background: #5a4520; }
+button.small { font-size: 13px; padding: 5px 10px; }
+.row { display: flex; gap: 12px; align-items: center; }
+.row.between { justify-content: space-between; }
+.footer-row { margin-top: 18px; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.shards { color: var(--accent2); font-weight: 600; }
+.muted { color: var(--muted); font-size: 13px; }
+.help { color: var(--muted); font-size: 13px; line-height: 1.5; }
+kbd {
+  background: #2b2b3a; border: 1px solid #4a4a60; border-bottom-width: 2px;
+  border-radius: 4px; padding: 1px 6px; font-size: 12px; color: #fff;
+}
+
+/* Hero select */
+.hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.hero-card {
+  border: 1px solid var(--panel-border); border-radius: 8px; padding: 12px;
+  background: #16161f; cursor: pointer; position: relative;
+  transition: border-color 0.1s, transform 0.1s;
+}
+.hero-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.hero-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,169,74,0.4); }
+.hero-card.locked { opacity: 0.6; }
+.hero-symbol {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 24px; color: #0b0b10; margin: 0 auto 8px;
+}
+.hero-name { font-weight: 700; text-align: center; }
+.hero-title { color: var(--muted); font-size: 12px; text-align: center; margin-bottom: 6px; }
+.hero-level { text-align: center; font-size: 13px; color: var(--accent2); }
+.hero-detail { margin-top: 14px; padding: 12px; background: #12121a; border-radius: 8px; border: 1px solid #26263a; }
+.stat-line { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; }
+.stat-line span b { color: var(--accent); }
+.skill-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.skill-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.skill-key {
+  min-width: 26px; height: 26px; border-radius: 5px; background: #2b2b3a;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--accent);
+}
+.xpbar { height: 6px; background: #26263a; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.xpbar > div { height: 100%; background: var(--accent2); }
+
+/* Meta shop */
+.upgrade-list { display: flex; flex-direction: column; gap: 8px; }
+.upgrade {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center;
+  padding: 10px 12px; background: #16161f; border: 1px solid #26263a; border-radius: 8px;
+}
+.upgrade .name { font-weight: 600; }
+.upgrade .desc { color: var(--muted); font-size: 13px; }
+.pips { display: flex; gap: 4px; }
+.pip { width: 10px; height: 10px; border-radius: 2px; background: #2b2b3a; border: 1px solid #3a3a52; }
+.pip.on { background: var(--accent); border-color: var(--accent); }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tab { padding: 6px 14px; border-radius: 6px; background: #1c1c28; cursor: pointer; border: 1px solid transparent; }
+.tab.active { border-color: var(--accent); color: var(--accent); }
+
+/* Inventory */
+.inv-panel { min-width: 720px; }
+.inv-layout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
+.equip-slots { display: flex; flex-direction: column; gap: 8px; }
+.slot {
+  display: flex; gap: 10px; align-items: center;
+  padding: 8px 10px; background: #16161f; border: 1px solid #26263a; border-radius: 8px; min-height: 52px;
+  cursor: pointer;
+}
+.slot:hover { border-color: var(--accent); }
+.slot .slot-label { color: var(--muted); font-size: 12px; width: 70px; }
+.item-icon {
+  width: 34px; height: 34px; border-radius: 6px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px;
+  background: #22222f; border: 1px solid #3a3a52;
+}
+.item-name { font-weight: 600; font-size: 14px; }
+.item-stats { color: var(--muted); font-size: 12px; }
+.rarity-common { color: var(--common); }
+.rarity-rare { color: var(--rare); }
+.rarity-epic { color: var(--epic); }
+.item-icon.rarity-common { border-color: #666; }
+.item-icon.rarity-rare { border-color: var(--rare); box-shadow: 0 0 6px rgba(90,169,255,0.4); }
+.item-icon.rarity-epic { border-color: var(--epic); box-shadow: 0 0 8px rgba(199,125,255,0.5); }
+.bag-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.bag-slot {
+  min-height: 74px; background: #16161f; border: 1px solid #26263a; border-radius: 8px;
+  padding: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center;
+}
+.bag-slot:hover { border-color: var(--accent); }
+.bag-slot.empty { opacity: 0.4; cursor: default; }
+.bag-slot .item-name { font-size: 12px; line-height: 1.2; }
+.item-tip {
+  margin-top: 12px; padding: 10px 12px; background: #12121a; border: 1px solid #26263a; border-radius: 8px; min-height: 84px; font-size: 13px;
+}
+.item-tip .actions { margin-top: 8px; display: flex; gap: 8px; }
+.compare { color: var(--good); }
+.compare.neg { color: var(--danger); }
+.player-stats { margin-top: 10px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.player-stats b { color: var(--text); }
+
+/* Shop */
+.shop-items { display: flex; flex-direction: column; gap: 8px; }
+.shop-item { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 8px 10px; background: #16161f; border: 1px solid #26263a; border-radius: 8px; }
+.gold { color: var(--accent); font-weight: 600; }
+
+/* Results */
+.result-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; margin: 14px 0; font-size: 15px; }
+.result-stats b { color: var(--accent); }
+.banner-death h1 { color: var(--danger); }
+.banner-win h1 { color: var(--good); }
+.start-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.start-item { padding: 10px; background: #16161f; border: 1px solid #26263a; border-radius: 8px; cursor: pointer; }
+.start-item:hover { border-color: var(--accent); }
+.start-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,169,74,0.4); }
+.start-item.locked { opacity: 0.55; }
+</style>
+</head>
+<body>
+<div id="game-root">
+  <canvas id="game" width="1024" height="640"></canvas>
+  <div id="ui"></div>
+</div>
+<script>
+'use strict';
+// ---- js/utils.js ----
+// Общие утилиты: RNG, математика, геометрия.
+
+const TILE = 32;
+const VIEW_W = 1024;
+const VIEW_H = 640;
+
+class RNG {
+  constructor(seed) { this.s = (seed >>> 0) || 1; }
+  next() {
+    // mulberry32
+    this.s = (this.s + 0x6D2B79F5) | 0;
+    let t = Math.imul(this.s ^ (this.s >>> 15), 1 | this.s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  float(a = 0, b = 1) { return a + this.next() * (b - a); }
+  int(a, b) { return Math.floor(this.float(a, b + 1)); }
+  pick(arr) { return arr[Math.floor(this.next() * arr.length)]; }
+  chance(p) { return this.next() < p; }
+  weighted(arr, wfn) {
+    let total = 0;
+    for (const it of arr) total += wfn(it);
+    let r = this.next() * total;
+    for (const it of arr) { r -= wfn(it); if (r <= 0) return it; }
+    return arr[arr.length - 1];
+  }
+  shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(this.next() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+}
+
+// Общий RNG для боя/лута (несидированный от пола).
+const R = new RNG((Date.now() ^ 0x9E3779B9) >>> 0);
+
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist = (ax, ay, bx, by) => Math.hypot(bx - ax, by - ay);
+const angleTo = (ax, ay, bx, by) => Math.atan2(by - ay, bx - ax);
+const angleDiff = (a, b) => {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+};
+const fmt = (n) => (Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('ru-RU') : String(Math.round(n)));
+const pct = (n) => Math.round(n * 100) + '%';
+const sign = (n) => (n > 0 ? '+' : '') + n;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Бресенхем для проверки видимости между тайлами.
+function lineOfSight(map, x0, y0, x1, y1) {
+  let dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+  let sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  let x = x0, y = y0;
+  for (let i = 0; i < 200; i++) {
+    if (x === x1 && y === y1) return true;
+    if (!(x === x0 && y === y0) && map.isWall(x, y)) return false;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+  }
+  return false;
+}
+
+if (typeof module !== 'undefined') module.exports = { RNG, clamp, lerp, dist, angleTo, angleDiff, lineOfSight, TILE };
+
+// ---- js/data.js ----
+// Все игровые данные: герои, умения, монстры, боссы, предметы, мета-улучшения.
+
+const GAME_TITLE = 'Тени Подгорья';
+const MAX_FLOOR = 10;
+const BOSS_FLOORS = [5, 10];
+const MERCHANT_FLOORS = [3, 7];
+const MAX_LEVEL = 40;
+const BAG_SIZE = 12;
+
+function xpToNext(level) { return Math.round(60 * Math.pow(level, 1.45)); }
+
+// ---------- Герои ----------
+const HEROES = [
+  {
+    id: 'arator', name: 'Аратор', title: 'Следопыт Севера', symbol: 'A', color: '#5cb85c',
+    desc: 'Наследник забытого королевства. Сбалансированный боец с мечом: крепок, быстр и умеет лечиться травами.',
+    hp: 120, hpPerLevel: 9, dmg: 14, dmgPerLevel: 1.1, speed: 172, armor: 2, crit: 0.08,
+    attack: { type: 'melee', range: 48, arc: Math.PI * 0.65, cooldown: 0.45 },
+    skills: ['dashStrike', 'warcry', 'herbs'], unlockCost: 0,
+  },
+  {
+    id: 'baldin', name: 'Балдин', title: 'Гном из Железных Чертогов', symbol: 'Б', color: '#e8a33d',
+    desc: 'Тяжёлый топор, тяжёлая броня, тяжёлый нрав. Медленный, но очень живучий и бьёт наповал.',
+    hp: 165, hpPerLevel: 12, dmg: 22, dmgPerLevel: 1.6, speed: 142, armor: 5, crit: 0.05,
+    attack: { type: 'melee', range: 44, arc: Math.PI * 0.85, cooldown: 0.7 },
+    skills: ['whirlwind', 'stoneSkin', 'axeThrow'], unlockCost: 0,
+  },
+  {
+    id: 'faelas', name: 'Фаелас', title: 'Лучник Сумеречного леса', symbol: 'Ф', color: '#6fc3df',
+    desc: 'Эльф с длинным луком. Хрупкий, но стремительный: держит дистанцию и осыпает врагов стрелами.',
+    hp: 85, hpPerLevel: 6, dmg: 11, dmgPerLevel: 0.9, speed: 196, armor: 0, crit: 0.15,
+    attack: { type: 'ranged', speed: 540, cooldown: 0.38, size: 4, color: '#c8f0ff' },
+    skills: ['volley', 'evade', 'trueshot'], unlockCost: 60,
+  },
+  {
+    id: 'mithrandir', name: 'Митрандир', title: 'Серый странник', symbol: 'М', color: '#c77dff',
+    desc: 'Маг с посохом и искрой древнего огня. Слаб телом, но огненные шары и вспышки решают бой издалека.',
+    hp: 80, hpPerLevel: 6, dmg: 16, dmgPerLevel: 1.2, speed: 166, armor: 0, crit: 0.06,
+    attack: { type: 'ranged', speed: 420, cooldown: 0.55, size: 6, color: '#e2b3ff' },
+    skills: ['fireball', 'flash', 'barrier'], unlockCost: 90,
+  },
+  {
+    id: 'peregrin', name: 'Перегрин', title: 'Хоббит из Зелёных Холмов', symbol: 'П', color: '#f5d76e',
+    desc: 'Маленький, быстрый и незаметный. Кинжал, камни и второй завтрак — всё, что нужно для приключения.',
+    hp: 95, hpPerLevel: 7, dmg: 9, dmgPerLevel: 0.8, speed: 212, armor: 1, crit: 0.2,
+    attack: { type: 'melee', range: 38, arc: Math.PI * 0.55, cooldown: 0.28 },
+    skills: ['vanish', 'stone', 'breakfast'], unlockCost: 120,
+  },
+];
+const HERO_BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
+
+// ---------- Умения ----------
+// use(game, player, aim) вызывается из game.js. aim = {x, y} направление (нормализованное).
+const SKILLS = {
+  dashStrike: {
+    name: 'Рывок клинка', icon: '➶', cooldown: 6,
+    desc: 'Рывок вперёд на 130 px, все враги на пути получают 200% урона.',
+    use(g, p, aim) { g.playerDash(p, aim, 130, 0.16, { dmgMult: 2.0, invuln: true }); },
+  },
+  warcry: {
+    name: 'Клич Севера', icon: '♪', cooldown: 18,
+    desc: '+40% урона и +15% скорости на 6 секунд.',
+    use(g, p) { p.addBuff('dmg', 0.4, 6); p.addBuff('speed', 0.15, 6); g.addText(p.x, p.y - 20, 'Клич!', '#ffd54f'); g.burst(p.x, p.y, '#ffd54f', 14); },
+  },
+  herbs: {
+    name: 'Целебные травы', icon: '❀', cooldown: 24,
+    desc: 'Восстанавливает 35% здоровья в течение 4 секунд.',
+    use(g, p) { p.addBuff('regen', p.maxHp * 0.35 / 4, 4); g.addText(p.x, p.y - 20, 'Травы', '#7cd67c'); },
+  },
+  whirlwind: {
+    name: 'Круговой удар', icon: '↻', cooldown: 8,
+    desc: 'Удар по всем врагам в радиусе 80 px: 170% урона и отбрасывание.',
+    use(g, p) { g.playerAoe(p, 80, 1.7, { knockback: 260, color: '#e8a33d' }); },
+  },
+  stoneSkin: {
+    name: 'Каменная кожа', icon: '▣', cooldown: 20,
+    desc: '+12 брони на 6 секунд.',
+    use(g, p) { p.addBuff('armor', 12, 6); g.addText(p.x, p.y - 20, 'Камень', '#bdbdbd'); g.burst(p.x, p.y, '#9e9e9e', 12); },
+  },
+  axeThrow: {
+    name: 'Бросок топора', icon: '⚒', cooldown: 9,
+    desc: 'Топор летит сквозь врагов, нанося 220% урона каждому.',
+    use(g, p, aim) { g.spawnProjectile({ x: p.x, y: p.y, vx: aim.x * 380, vy: aim.y * 380, dmg: p.damage() * 2.2, owner: 'player', pierce: 99, size: 9, color: '#e8a33d', life: 1.2, spin: true }); },
+  },
+  volley: {
+    name: 'Залп', icon: '⋔', cooldown: 7,
+    desc: 'Веер из 5 стрел, каждая наносит 90% урона.',
+    use(g, p, aim) {
+      const base = Math.atan2(aim.y, aim.x);
+      for (let i = -2; i <= 2; i++) {
+        const a = base + i * 0.16;
+        g.spawnProjectile({ x: p.x, y: p.y, vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, dmg: p.damage() * 0.9, owner: 'player', size: 4, color: '#c8f0ff', life: 1.0 });
+      }
+    },
+  },
+  evade: {
+    name: 'Прыжок эльфа', icon: '⇠', cooldown: 5,
+    desc: 'Отскок назад на 150 px с неуязвимостью.',
+    use(g, p, aim) { g.playerDash(p, { x: -aim.x, y: -aim.y }, 150, 0.15, { invuln: true }); },
+  },
+  trueshot: {
+    name: 'Стрела судьбы', icon: '➹', cooldown: 12,
+    desc: 'Быстрая пробивающая стрела, 320% урона, гарантированный крит.',
+    use(g, p, aim) { g.spawnProjectile({ x: p.x, y: p.y, vx: aim.x * 800, vy: aim.y * 800, dmg: p.damage() * 3.2, owner: 'player', pierce: 99, size: 5, color: '#ffffff', life: 1.0, crit: true }); },
+  },
+  fireball: {
+    name: 'Огненный шар', icon: '✦', cooldown: 6,
+    desc: 'Шар взрывается при попадании: 240% урона всем в радиусе 85 px.',
+    use(g, p, aim) { g.spawnProjectile({ x: p.x, y: p.y, vx: aim.x * 340, vy: aim.y * 340, dmg: p.damage() * 2.4, owner: 'player', size: 9, color: '#ff7043', life: 1.6, explode: 85 }); },
+  },
+  flash: {
+    name: 'Вспышка света', icon: '☀', cooldown: 15,
+    desc: 'Оглушает всех врагов в радиусе 160 px на 2.5 с и наносит 60% урона.',
+    use(g, p) { g.playerAoe(p, 160, 0.6, { stun: 2.5, color: '#ffffff' }); g.flashScreen(0.6); },
+  },
+  barrier: {
+    name: 'Барьер', icon: '◎', cooldown: 22,
+    desc: 'Щит, поглощающий урон в размере 45% макс. здоровья, на 8 секунд.',
+    use(g, p) { p.shield = Math.max(p.shield, p.maxHp * 0.45); p.shieldTime = 8; g.addText(p.x, p.y - 20, 'Барьер', '#c77dff'); },
+  },
+  vanish: {
+    name: 'Тихие шаги', icon: '☾', cooldown: 16,
+    desc: 'Невидимость на 4 с: враги теряют вас, следующий удар наносит 300% урона.',
+    use(g, p) { p.addBuff('invisible', 1, 4); p.sneak = true; g.enemies.forEach((e) => { e.target = null; e.state = 'idle'; }); g.addText(p.x, p.y - 20, 'Тень', '#b0bec5'); },
+  },
+  stone: {
+    name: 'Меткий камень', icon: '●', cooldown: 6,
+    desc: 'Камень из пращи: 130% урона и оглушение на 1.5 с.',
+    use(g, p, aim) { g.spawnProjectile({ x: p.x, y: p.y, vx: aim.x * 480, vy: aim.y * 480, dmg: p.damage() * 1.3, owner: 'player', size: 5, color: '#a1887f', life: 1.0, stun: 1.5 }); },
+  },
+  breakfast: {
+    name: 'Второй завтрак', icon: '☕', cooldown: 20,
+    desc: 'Мгновенно лечит 25% здоровья и даёт +30% скорости на 5 с.',
+    use(g, p) { g.healPlayer(p.maxHp * 0.25); p.addBuff('speed', 0.3, 5); g.addText(p.x, p.y - 20, 'Ням!', '#f5d76e'); },
+  },
+};
+
+// ---------- Монстры ----------
+const MONSTERS = {
+  goblin: { name: 'Гоблин', symbol: 'g', shape: 'tri', color: '#7cb342', size: 11, hp: 24, dmg: 7, speed: 140, xp: 8, shards: 1, gold: [2, 6], sight: 230, attackRange: 28, attackCd: 0.9, windup: 0.25, minFloor: 1, weight: 10 },
+  orc: { name: 'Орк', symbol: 'o', shape: 'square', color: '#c62828', size: 14, hp: 52, dmg: 12, speed: 108, xp: 16, shards: 1, gold: [4, 10], sight: 240, attackRange: 32, attackCd: 1.1, windup: 0.35, minFloor: 1, weight: 8 },
+  archer: { name: 'Орк-лучник', symbol: 'a', shape: 'square', color: '#ef6c00', size: 12, hp: 36, dmg: 10, speed: 100, xp: 18, shards: 1, gold: [4, 10], sight: 300, attackRange: 250, keepDistance: 170, ranged: true, projSpeed: 280, attackCd: 1.6, windup: 0.4, minFloor: 2, weight: 6 },
+  warg: { name: 'Варг', symbol: 'w', shape: 'diamond', color: '#9e9e9e', size: 13, hp: 42, dmg: 15, speed: 200, xp: 22, shards: 2, gold: [3, 8], sight: 320, attackRange: 30, attackCd: 0.8, windup: 0.2, minFloor: 3, weight: 6 },
+  spider: { name: 'Паук Мрака', symbol: 's', shape: 'tri', color: '#8e24aa', size: 12, hp: 34, dmg: 8, speed: 160, xp: 20, shards: 2, gold: [3, 9], sight: 260, attackRange: 28, attackCd: 0.9, windup: 0.25, poison: 4, minFloor: 4, weight: 6 },
+  troll: { name: 'Пещерный тролль', symbol: 'T', shape: 'hex', color: '#795548', size: 24, hp: 190, dmg: 28, speed: 74, xp: 65, shards: 4, gold: [15, 30], sight: 240, attackRange: 46, attackCd: 1.8, windup: 0.6, knockback: 300, minFloor: 4, weight: 3 },
+  uruk: { name: 'Урук', symbol: 'U', shape: 'square', color: '#4e342e', size: 17, hp: 120, dmg: 21, speed: 118, xp: 45, shards: 3, gold: [10, 20], sight: 260, attackRange: 34, attackCd: 1.0, windup: 0.3, armor: 4, minFloor: 6, weight: 5 },
+  wraith: { name: 'Умертвие', symbol: 'u', shape: 'circle', color: '#80deea', size: 14, hp: 70, dmg: 17, speed: 125, xp: 50, shards: 3, gold: [8, 18], sight: 320, attackRange: 260, keepDistance: 150, ranged: true, projSpeed: 240, projColor: '#4dd0e1', attackCd: 1.5, windup: 0.4, slow: 2, minFloor: 6, weight: 4 },
+  shadow: { name: 'Тень', symbol: 'x', shape: 'circle', color: '#37474f', size: 12, hp: 55, dmg: 19, speed: 175, xp: 40, shards: 3, gold: [6, 14], sight: 300, attackRange: 30, attackCd: 0.7, windup: 0.2, minFloor: 8, weight: 5 },
+};
+
+const BOSSES = {
+  grazgot: {
+    id: 'grazgot', name: 'Гразгот, вождь орков', symbol: 'G', shape: 'square', color: '#b71c1c', size: 30,
+    hp: 750, dmg: 26, speed: 105, xp: 300, shards: 30, gold: [80, 120], sight: 900, attackRange: 50, attackCd: 1.4, windup: 0.5, armor: 3, knockback: 260,
+    abilities: { charge: 7, summon: 13, slam: 5 },
+  },
+  morgul: {
+    id: 'morgul', name: 'Тень Моргула', symbol: 'Ω', shape: 'circle', color: '#263238', size: 30,
+    hp: 1500, dmg: 32, speed: 120, xp: 800, shards: 60, gold: [150, 250], sight: 900, attackRange: 52, attackCd: 1.2, windup: 0.4, armor: 5,
+    abilities: { blink: 6, volley: 4.5, summon: 16, scream: 11 },
+  },
+};
+
+// ---------- Предметы ----------
+const RARITY = {
+  common: { name: 'Обычный', mult: 1.0, color: '#cfcfcf', weight: 65, affixes: 0, price: 1 },
+  rare: { name: 'Редкий', mult: 1.45, color: '#5aa9ff', weight: 28, affixes: 1, price: 2.2 },
+  epic: { name: 'Эпический', mult: 2.1, color: '#c77dff', weight: 7, affixes: 2, price: 5 },
+};
+const RARITY_SUFFIX = { common: '', rare: ' искусной работы', epic: ' древних мастеров' };
+
+const STAT_NAMES = {
+  dmg: 'Урон', hp: 'Здоровье', armor: 'Броня', speed: 'Скорость', crit: 'Шанс крита', attackSpeed: 'Скорость атаки',
+  lifesteal: 'Вампиризм', cdr: 'Сокр. перезарядки', xpGain: 'Опыт', goldFind: 'Золото', regen: 'Регенерация',
+};
+const STAT_FMT = {
+  dmg: (v) => sign(Math.round(v)), hp: (v) => sign(Math.round(v)), armor: (v) => sign(Math.round(v)), speed: (v) => sign(Math.round(v)),
+  crit: (v) => sign(Math.round(v * 100)) + '%', attackSpeed: (v) => sign(Math.round(v * 100)) + '%', lifesteal: (v) => sign(Math.round(v * 100)) + '%',
+  cdr: (v) => sign(Math.round(v * 100)) + '%', xpGain: (v) => sign(Math.round(v * 100)) + '%', goldFind: (v) => sign(Math.round(v * 100)) + '%', regen: (v) => sign(+v.toFixed(1)) + '/с',
+};
+
+// Базовые предметы. tier — минимальный этаж, где может выпасть.
+const ITEM_BASES = [
+  // Оружие
+  { id: 'rustySword', slot: 'weapon', name: 'Ржавый меч', icon: '⚔', tier: 1, stats: { dmg: 4 } },
+  { id: 'shortBlade', slot: 'weapon', name: 'Короткий клинок', icon: '⚔', tier: 1, stats: { dmg: 3, attackSpeed: 0.1 } },
+  { id: 'orcCleaver', slot: 'weapon', name: 'Орочий тесак', icon: '⚔', tier: 2, stats: { dmg: 7 } },
+  { id: 'dwarfAxe', slot: 'weapon', name: 'Секира Чертогов', icon: '⚒', tier: 3, stats: { dmg: 10, attackSpeed: -0.08 } },
+  { id: 'elfBlade', slot: 'weapon', name: 'Эльфийский клинок', icon: '⚔', tier: 4, stats: { dmg: 8, crit: 0.08, attackSpeed: 0.1 } },
+  { id: 'runeBlade', slot: 'weapon', name: 'Рунный клинок', icon: '⚔', tier: 6, stats: { dmg: 14, lifesteal: 0.05 } },
+  { id: 'sunEdge', slot: 'weapon', name: 'Клинок Заката', icon: '✧', tier: 8, stats: { dmg: 20, crit: 0.1 } },
+  // Броня
+  { id: 'leather', slot: 'armor', name: 'Кожаный доспех', icon: '▲', tier: 1, stats: { armor: 2, hp: 10 } },
+  { id: 'chain', slot: 'armor', name: 'Кольчуга', icon: '▲', tier: 2, stats: { armor: 4, hp: 15, speed: -6 } },
+  { id: 'loriCloak', slot: 'armor', name: 'Плащ Лесного народа', icon: '▲', tier: 3, stats: { armor: 2, speed: 14, hp: 8 } },
+  { id: 'dwarfMail', slot: 'armor', name: 'Гномья бронь', icon: '▲', tier: 4, stats: { armor: 7, hp: 30, speed: -12 } },
+  { id: 'mithril', slot: 'armor', name: 'Мифриловая рубаха', icon: '▲', tier: 7, stats: { armor: 9, hp: 40 } },
+  // Талисманы
+  { id: 'boneCharm', slot: 'trinket', name: 'Костяной оберег', icon: '◈', tier: 1, stats: { hp: 15 } },
+  { id: 'swiftRing', slot: 'trinket', name: 'Кольцо ветра', icon: '◈', tier: 2, stats: { speed: 18 } },
+  { id: 'bloodAmulet', slot: 'trinket', name: 'Кровавый амулет', icon: '◈', tier: 3, stats: { lifesteal: 0.08 } },
+  { id: 'wisdomStone', slot: 'trinket', name: 'Камень мудрости', icon: '◈', tier: 3, stats: { xpGain: 0.2 } },
+  { id: 'hourglass', slot: 'trinket', name: 'Песочные часы', icon: '◈', tier: 4, stats: { cdr: 0.15 } },
+  { id: 'goldTooth', slot: 'trinket', name: 'Золотой зуб дракона', icon: '◈', tier: 4, stats: { goldFind: 0.35, dmg: 2 } },
+  { id: 'starPendant', slot: 'trinket', name: 'Подвеска звезды', icon: '◈', tier: 6, stats: { crit: 0.12, regen: 1.0 } },
+  { id: 'kingRing', slot: 'trinket', name: 'Кольцо Древнего Короля', icon: '◈', tier: 8, stats: { dmg: 6, hp: 30, cdr: 0.1 } },
+];
+const ITEM_BASE_BY_ID = Object.fromEntries(ITEM_BASES.map((b) => [b.id, b]));
+
+const AFFIXES = [
+  { stat: 'dmg', min: 2, max: 5 }, { stat: 'hp', min: 8, max: 20 }, { stat: 'armor', min: 1, max: 3 }, { stat: 'speed', min: 5, max: 12 },
+  { stat: 'crit', min: 0.03, max: 0.08 }, { stat: 'attackSpeed', min: 0.05, max: 0.12 }, { stat: 'lifesteal', min: 0.02, max: 0.05 },
+  { stat: 'cdr', min: 0.04, max: 0.1 }, { stat: 'xpGain', min: 0.05, max: 0.15 }, { stat: 'goldFind', min: 0.1, max: 0.25 }, { stat: 'regen', min: 0.3, max: 0.8 },
+];
+
+const CONSUMABLES = {
+  potion: { id: 'potion', slot: 'consumable', name: 'Зелье лечения', icon: '⚗', color: '#e05a4a', price: 30, desc: 'Восстанавливает 40% здоровья.', weight: 10 },
+  lembas: { id: 'lembas', slot: 'consumable', name: 'Дорожный хлеб', icon: '▭', color: '#f5d76e', price: 25, desc: 'Лечит 20% здоровья и даёт +25% скорости на 6 с.', weight: 5 },
+  fireScroll: { id: 'fireScroll', slot: 'consumable', name: 'Свиток пламени', icon: '§', color: '#ff7043', price: 45, desc: 'Взрыв вокруг героя: 300% урона всем в радиусе 140 px.', weight: 4 },
+  elixir: { id: 'elixir', slot: 'consumable', name: 'Эликсир силы', icon: '⚗', color: '#c77dff', price: 50, desc: '+30% урона и +10 брони на 12 с.', weight: 3 },
+};
+
+// Стартовые предметы (разблокируются за осколки, выбираются перед забегом).
+const START_ITEMS = [
+  { id: 'startNone', name: 'Без предмета', desc: 'Начать налегке.', cost: 0, item: null },
+  { id: 'startPotions', name: 'Сумка целителя', desc: '3 зелья лечения на старте.', cost: 25, consumables: { potion: 3 } },
+  { id: 'startCloak', name: 'Плащ Лесного народа', desc: 'Редкий плащ: броня, здоровье и скорость.', cost: 60, item: { base: 'loriCloak', rarity: 'rare' } },
+  { id: 'startBlade', name: 'Эльфийский клинок', desc: 'Редкий клинок с шансом крита.', cost: 80, item: { base: 'elfBlade', rarity: 'rare' } },
+  { id: 'startAmulet', name: 'Кровавый амулет', desc: 'Эпический амулет: сильный вампиризм.', cost: 140, item: { base: 'bloodAmulet', rarity: 'epic' } },
+];
+
+// Мета-улучшения (постоянные).
+const UPGRADES = [
+  { id: 'vitality', name: 'Крепость тела', desc: '+8% максимального здоровья за ранг', max: 5, baseCost: 30, costStep: 25, apply: (s, r) => { s.hpMult += 0.08 * r; } },
+  { id: 'might', name: 'Мощь удара', desc: '+6% урона за ранг', max: 5, baseCost: 35, costStep: 30, apply: (s, r) => { s.dmgMult += 0.06 * r; } },
+  { id: 'swiftness', name: 'Лёгкость шага', desc: '+4% скорости передвижения за ранг', max: 3, baseCost: 40, costStep: 40, apply: (s, r) => { s.speedMult += 0.04 * r; } },
+  { id: 'haste', name: 'Быстрый разум', desc: '-6% времени перезарядки умений за ранг', max: 3, baseCost: 45, costStep: 45, apply: (s, r) => { s.cdr += 0.06 * r; } },
+  { id: 'fortune', name: 'Запас зелий', desc: '+1 зелье лечения на старте за ранг', max: 3, baseCost: 20, costStep: 20, apply: (s, r) => { s.startPotions += r; } },
+  { id: 'wealth', name: 'Наследство', desc: '+25 золота на старте за ранг', max: 4, baseCost: 15, costStep: 15, apply: (s, r) => { s.startGold += 25 * r; } },
+  { id: 'wisdom', name: 'Мудрость веков', desc: '+10% получаемого опыта за ранг', max: 3, baseCost: 40, costStep: 40, apply: (s, r) => { s.xpMult += 0.1 * r; } },
+  { id: 'alchemy', name: 'Алхимия', desc: 'Зелья лечат на +10% больше за ранг', max: 3, baseCost: 25, costStep: 25, apply: (s, r) => { s.potionMult += 0.1 * r; } },
+  { id: 'luck', name: 'Удача странника', desc: '+10% шанс выпадения предметов за ранг', max: 3, baseCost: 35, costStep: 35, apply: (s, r) => { s.dropMult += 0.1 * r; } },
+];
+const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
+function upgradeCost(u, rank) { return u.baseCost + u.costStep * rank; }
+
+if (typeof module !== 'undefined') {
+  module.exports = { HEROES, HERO_BY_ID, SKILLS, MONSTERS, BOSSES, RARITY, ITEM_BASES, ITEM_BASE_BY_ID, AFFIXES, CONSUMABLES, START_ITEMS, UPGRADES, UPGRADE_BY_ID, upgradeCost, xpToNext, MAX_FLOOR, BOSS_FLOORS, MERCHANT_FLOORS, BAG_SIZE };
+}
+
+// ---- js/save.js ----
+// Постоянный прогресс между забегами (localStorage).
+
+const SAVE_KEY = 'shadows-undermountain-save-v1';
+
+function defaultSave() {
+  const heroes = {};
+  for (const h of HEROES) heroes[h.id] = { xp: 0, level: 1, unlocked: h.unlockCost === 0, runs: 0, wins: 0 };
+  return {
+    shards: 0,
+    heroes,
+    upgrades: {},
+    startItems: { startNone: true },
+    stats: { runs: 0, kills: 0, bestFloor: 0, wins: 0, bossKills: 0 },
+    lastHero: 'arator',
+    lastStartItem: 'startNone',
+  };
+}
+
+const Save = {
+  data: null,
+  load() {
+    let d = null;
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (raw) d = JSON.parse(raw);
+    } catch (e) { d = null; }
+    const def = defaultSave();
+    if (!d) d = def;
+    // Мягкая миграция: доклеиваем недостающие поля.
+    for (const k of Object.keys(def)) if (d[k] === undefined) d[k] = def[k];
+    for (const h of HEROES) if (!d.heroes[h.id]) d.heroes[h.id] = def.heroes[h.id];
+    this.data = d;
+    return d;
+  },
+  save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* приватный режим и т.п. */ }
+  },
+  reset() { this.data = defaultSave(); this.save(); },
+  hero(id) { return this.data.heroes[id]; },
+  rank(upId) { return this.data.upgrades[upId] || 0; },
+  // Итоговые модификаторы мета-прокачки.
+  bonuses() {
+    const s = { hpMult: 1, dmgMult: 1, speedMult: 1, cdr: 0, startPotions: 0, startGold: 0, xpMult: 1, potionMult: 1, dropMult: 1 };
+    for (const u of UPGRADES) { const r = this.rank(u.id); if (r > 0) u.apply(s, r); }
+    return s;
+  },
+  // Начисление опыта герою; возвращает число полученных уровней.
+  addHeroXp(id, amount) {
+    const h = this.hero(id);
+    h.xp += amount;
+    let ups = 0;
+    while (h.level < MAX_LEVEL && h.xp >= xpToNext(h.level)) { h.xp -= xpToNext(h.level); h.level++; ups++; }
+    if (h.level >= MAX_LEVEL) h.xp = Math.min(h.xp, xpToNext(h.level) - 1);
+    return ups;
+  },
+};
+
+// ---- js/dungeon.js ----
+// Генерация этажей: комнаты + коридоры, арены боссов, туман войны.
+
+const T_WALL = 0, T_FLOOR = 1, T_STAIRS = 2, T_PILLAR = 3;
+
+class GameMap {
+  constructor(w, h) {
+    this.w = w; this.h = h;
+    this.tiles = new Uint8Array(w * h);
+    this.explored = new Uint8Array(w * h);
+    this.visible = new Uint8Array(w * h);
+    this.rooms = [];
+    this.torches = [];
+    this.decor = [];
+  }
+  idx(x, y) { return y * this.w + x; }
+  inBounds(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
+  get(x, y) { return this.inBounds(x, y) ? this.tiles[this.idx(x, y)] : T_WALL; }
+  set(x, y, t) { if (this.inBounds(x, y)) this.tiles[this.idx(x, y)] = t; }
+  isWall(x, y) { const t = this.get(x, y); return t === T_WALL || t === T_PILLAR; }
+  isWalkable(x, y) { return !this.isWall(x, y); }
+  // Проверка круга (в пикселях) на столкновение со стенами.
+  circleBlocked(px, py, r) {
+    const x0 = Math.floor((px - r) / TILE), x1 = Math.floor((px + r) / TILE);
+    const y0 = Math.floor((py - r) / TILE), y1 = Math.floor((py + r) / TILE);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      if (!this.isWall(x, y)) continue;
+      // Ближайшая точка тайла к центру круга.
+      const cx = clamp(px, x * TILE, x * TILE + TILE), cy = clamp(py, y * TILE, y * TILE + TILE);
+      if ((cx - px) ** 2 + (cy - py) ** 2 < r * r) return true;
+    }
+    return false;
+  }
+  // Обновление видимости вокруг точки (в тайлах).
+  updateVisibility(cx, cy, radius) {
+    this.visible.fill(0);
+    const r2 = radius * radius;
+    for (let y = cy - radius; y <= cy + radius; y++) {
+      for (let x = cx - radius; x <= cx + radius; x++) {
+        if (!this.inBounds(x, y)) continue;
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy > r2) continue;
+        if (lineOfSight(this, cx, cy, x, y)) {
+          const i = this.idx(x, y);
+          this.visible[i] = 1; this.explored[i] = 1;
+        }
+      }
+    }
+  }
+  // BFS-поле расстояний от тайла (для навигации врагов).
+  flowField(tx, ty) {
+    const dist = new Int16Array(this.w * this.h).fill(-1);
+    if (!this.inBounds(tx, ty) || this.isWall(tx, ty)) return dist;
+    const q = [this.idx(tx, ty)];
+    dist[q[0]] = 0;
+    let head = 0;
+    while (head < q.length) {
+      const i = q[head++];
+      const x = i % this.w, y = (i / this.w) | 0, d = dist[i];
+      const n = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+      for (const [nx, ny] of n) {
+        if (!this.inBounds(nx, ny) || this.isWall(nx, ny)) continue;
+        const j = this.idx(nx, ny);
+        if (dist[j] !== -1) continue;
+        dist[j] = d + 1;
+        q.push(j);
+      }
+    }
+    return dist;
+  }
+}
+
+function rectsOverlap(a, b, pad) {
+  return a.x - pad < b.x + b.w && a.x + a.w + pad > b.x && a.y - pad < b.y + b.h && a.y + a.h + pad > b.y;
+}
+
+// Возвращает { map, spawn, stairs, enemies:[{type,x,y}], chests:[{x,y}], merchant:{x,y}|null, boss:{id,x,y}|null }
+function generateFloor(floor, seed) {
+  const rng = new RNG(seed);
+  const isBoss = BOSS_FLOORS.includes(floor);
+  return isBoss ? generateBossArena(floor, rng) : generateRooms(floor, rng);
+}
+
+function generateRooms(floor, rng) {
+  const W = 52 + Math.min(floor, 6) * 2, H = 38 + Math.min(floor, 6);
+  const map = new GameMap(W, H);
+  const rooms = [];
+  const target = 8 + Math.min(floor, 5);
+  for (let attempt = 0; attempt < 400 && rooms.length < target; attempt++) {
+    const w = rng.int(5, 11), h = rng.int(4, 9);
+    const x = rng.int(1, W - w - 2), y = rng.int(1, H - h - 2);
+    const r = { x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1) };
+    if (rooms.some((o) => rectsOverlap(r, o, 2))) continue;
+    rooms.push(r);
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) map.set(xx, yy, T_FLOOR);
+  }
+  // Сортируем комнаты по X, чтобы коридоры шли примерно слева направо, и соединяем цепочкой.
+  rooms.sort((a, b) => a.cx - b.cx);
+  for (let i = 1; i < rooms.length; i++) carveCorridor(map, rooms[i - 1], rooms[i], rng);
+  // Пара дополнительных петель для вариативности.
+  for (let k = 0; k < 2 && rooms.length > 3; k++) {
+    const a = rng.pick(rooms), b = rng.pick(rooms);
+    if (a !== b) carveCorridor(map, a, b, rng);
+  }
+  // Колонны в больших комнатах.
+  for (const r of rooms) {
+    if (r.w >= 8 && r.h >= 6 && rng.chance(0.6)) {
+      const n = rng.int(1, 3);
+      for (let i = 0; i < n; i++) {
+        const px = rng.int(r.x + 2, r.x + r.w - 3), py = rng.int(r.y + 2, r.y + r.h - 3);
+        if (px !== r.cx || py !== r.cy) map.set(px, py, T_PILLAR);
+      }
+    }
+  }
+  map.rooms = rooms;
+  placeTorches(map, rng);
+
+  const first = rooms[0];
+  // Лестница — в самой дальней по BFS комнате.
+  const field = map.flowField(first.cx, first.cy);
+  let last = rooms[rooms.length - 1], best = -1;
+  for (const r of rooms) { const d = field[map.idx(r.cx, r.cy)]; if (d > best) { best = d; last = r; } }
+  map.set(last.cx, last.cy, T_STAIRS);
+
+  const spawn = { x: (first.cx + 0.5) * TILE, y: (first.cy + 0.5) * TILE };
+  const stairs = { x: (last.cx + 0.5) * TILE, y: (last.cy + 0.5) * TILE };
+
+  // Враги.
+  const enemies = [];
+  const pool = Object.keys(MONSTERS).filter((k) => MONSTERS[k].minFloor <= floor);
+  const middle = rooms.filter((r) => r !== first);
+  const totalEnemies = 9 + floor * 3;
+  for (let i = 0; i < totalEnemies; i++) {
+    const r = rng.pick(middle);
+    const type = rng.weighted(pool, (k) => MONSTERS[k].weight * (MONSTERS[k].minFloor >= floor - 1 ? 1.5 : 1));
+    const pos = randomFloorInRoom(map, r, rng);
+    if (!pos) continue;
+    enemies.push({ type, x: pos.x, y: pos.y });
+  }
+
+  // Сундуки.
+  const chests = [];
+  const chestCount = rng.int(1, 2) + (rng.chance(0.3) ? 1 : 0);
+  for (let i = 0; i < chestCount; i++) {
+    const r = rng.pick(middle);
+    const pos = randomFloorInRoom(map, r, rng);
+    if (pos) chests.push(pos);
+  }
+
+  // Торговец.
+  let merchant = null;
+  if (MERCHANT_FLOORS.includes(floor)) {
+    const candidates = middle.filter((r) => r !== last);
+    const r = rng.pick(candidates.length ? candidates : middle);
+    const pos = randomFloorInRoom(map, r, rng);
+    if (pos) merchant = pos;
+  }
+  return { map, spawn, stairs, enemies, chests, merchant, boss: null };
+}
+
+function generateBossArena(floor, rng) {
+  const W = 36, H = 28;
+  const map = new GameMap(W, H);
+  const r = { x: 4, y: 4, w: W - 8, h: H - 8, cx: W >> 1, cy: H >> 1 };
+  for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) map.set(x, y, T_FLOOR);
+  // Срезаем углы для формы арены.
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4 - i; j++) {
+    map.set(r.x + i, r.y + j, T_WALL); map.set(r.x + r.w - 1 - i, r.y + j, T_WALL);
+    map.set(r.x + i, r.y + r.h - 1 - j, T_WALL); map.set(r.x + r.w - 1 - i, r.y + r.h - 1 - j, T_WALL);
+  }
+  // Четыре колонны.
+  for (const [px, py] of [[r.cx - 6, r.cy - 4], [r.cx + 6, r.cy - 4], [r.cx - 6, r.cy + 4], [r.cx + 6, r.cy + 4]]) map.set(px, py, T_PILLAR);
+  map.rooms = [r];
+  placeTorches(map, rng);
+  // Открываем всю арену сразу.
+  map.explored.fill(1);
+  const spawn = { x: (r.x + 3) * TILE, y: (r.cy + 0.5) * TILE };
+  const stairsTx = r.x + r.w - 3;
+  map.set(stairsTx, r.cy, T_STAIRS);
+  const stairs = { x: (stairsTx + 0.5) * TILE, y: (r.cy + 0.5) * TILE };
+  const bossId = floor >= 10 ? 'morgul' : 'grazgot';
+  return { map, spawn, stairs, enemies: [], chests: [], merchant: null, boss: { id: bossId, x: (r.cx + 4) * TILE, y: (r.cy + 0.5) * TILE } };
+}
+
+function carveCorridor(map, a, b, rng) {
+  let x = a.cx, y = a.cy;
+  const horizontalFirst = rng.chance(0.5);
+  const carve = (cx, cy) => { if (map.get(cx, cy) === T_WALL) map.set(cx, cy, T_FLOOR); };
+  const stepX = () => { while (x !== b.cx) { x += Math.sign(b.cx - x); carve(x, y); } };
+  const stepY = () => { while (y !== b.cy) { y += Math.sign(b.cy - y); carve(x, y); } };
+  if (horizontalFirst) { stepX(); stepY(); } else { stepY(); stepX(); }
+}
+
+function randomFloorInRoom(map, r, rng) {
+  for (let i = 0; i < 20; i++) {
+    const x = rng.int(r.x, r.x + r.w - 1), y = rng.int(r.y, r.y + r.h - 1);
+    if (map.get(x, y) === T_FLOOR) return { x: (x + 0.5) * TILE, y: (y + 0.5) * TILE };
+  }
+  return null;
+}
+
+function placeTorches(map, rng) {
+  map.torches = [];
+  for (let y = 1; y < map.h - 1; y++) for (let x = 1; x < map.w - 1; x++) {
+    if (map.get(x, y) !== T_FLOOR) continue;
+    if (map.get(x, y - 1) === T_WALL && rng.chance(0.08)) map.torches.push({ x: (x + 0.5) * TILE, y: y * TILE + 4, phase: rng.float(0, 6.28) });
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { GameMap, generateFloor, T_WALL, T_FLOOR, T_STAIRS, T_PILLAR };
+
+// ---- js/entities.js ----
+// Игровые сущности: герой, враги, снаряды, лут, эффекты.
+
+class Player {
+  constructor(heroDef, level, meta) {
+    this.hero = heroDef;
+    this.level = level;
+    this.meta = meta;
+    this.x = 0; this.y = 0; this.r = 12;
+    this.aim = { x: 1, y: 0 };
+    this.vx = 0; this.vy = 0;
+    this.equipment = { weapon: null, armor: null, trinket: null };
+    this.bag = [];
+    this.consumables = { potion: 0, lembas: 0, fireScroll: 0, elixir: 0 };
+    this.buffs = [];
+    this.shield = 0; this.shieldTime = 0;
+    this.attackTimer = 0;
+    this.skillCds = [0, 0, 0];
+    this.dodgeCd = 0;
+    this.dash = null;
+    this.poison = 0; this.poisonTime = 0;
+    this.slowTime = 0; this.stunTime = 0;
+    this.invulnTime = 0; this.hurtFlash = 0;
+    this.sneak = false;
+    this.gold = 0;
+    this.swing = 0; this.swingAngle = 0;
+    this.hp = this.maxHp;
+  }
+  // ---- Статы ----
+  equipStat(name) {
+    let v = 0;
+    for (const k in this.equipment) { const it = this.equipment[k]; if (it && it.stats[name]) v += it.stats[name]; }
+    return v;
+  }
+  buffStat(name) {
+    let v = 0;
+    for (const b of this.buffs) if (b.stat === name) v += b.value;
+    return v;
+  }
+  get maxHp() {
+    const base = (this.hero.hp + this.hero.hpPerLevel * (this.level - 1) + this.equipStat('hp')) * this.meta.hpMult;
+    return Math.round(base);
+  }
+  damage() {
+    const base = this.hero.dmg + this.hero.dmgPerLevel * (this.level - 1) + this.equipStat('dmg');
+    return base * this.meta.dmgMult * (1 + this.buffStat('dmg'));
+  }
+  speed() {
+    let s = (this.hero.speed + this.equipStat('speed')) * this.meta.speedMult * (1 + this.buffStat('speed'));
+    if (this.slowTime > 0) s *= 0.6;
+    return s;
+  }
+  armor() { return this.hero.armor + this.equipStat('armor') + this.buffStat('armor'); }
+  crit() { return this.hero.crit + this.equipStat('crit') + this.buffStat('crit'); }
+  attackCooldown() { return this.hero.attack.cooldown / (1 + this.equipStat('attackSpeed')); }
+  cdr() { return clamp(this.meta.cdr + this.equipStat('cdr'), 0, 0.6); }
+  lifesteal() { return this.equipStat('lifesteal'); }
+  xpMult() { return this.meta.xpMult * (1 + this.equipStat('xpGain')); }
+  goldMult() { return 1 + this.equipStat('goldFind'); }
+  regen() { return this.equipStat('regen') + this.buffStat('regen'); }
+  isInvisible() { return this.buffStat('invisible') > 0; }
+  addBuff(stat, value, time) {
+    // Одинаковые баффы не складываются, а обновляются.
+    const ex = this.buffs.find((b) => b.stat === stat && b.value === value);
+    if (ex) { ex.time = Math.max(ex.time, time); return; }
+    this.buffs.push({ stat, value, time });
+  }
+  tickTimers(dt) {
+    this.attackTimer = Math.max(0, this.attackTimer - dt);
+    for (let i = 0; i < 3; i++) this.skillCds[i] = Math.max(0, this.skillCds[i] - dt);
+    this.dodgeCd = Math.max(0, this.dodgeCd - dt);
+    this.invulnTime = Math.max(0, this.invulnTime - dt);
+    this.hurtFlash = Math.max(0, this.hurtFlash - dt);
+    this.slowTime = Math.max(0, this.slowTime - dt);
+    this.stunTime = Math.max(0, this.stunTime - dt);
+    this.swing = Math.max(0, this.swing - dt);
+    if (this.shieldTime > 0) { this.shieldTime -= dt; if (this.shieldTime <= 0) this.shield = 0; }
+    for (let i = this.buffs.length - 1; i >= 0; i--) { this.buffs[i].time -= dt; if (this.buffs[i].time <= 0) this.buffs.splice(i, 1); }
+    if (this.buffStat('invisible') <= 0) this.sneak = this.sneak && this.buffs.some((b) => b.stat === 'invisible');
+  }
+  bagFull() { return this.bag.length >= BAG_SIZE; }
+  statsSummary() {
+    return {
+      'Здоровье': `${Math.round(this.hp)} / ${this.maxHp}`,
+      'Урон': Math.round(this.damage()),
+      'Броня': Math.round(this.armor()),
+      'Скорость': Math.round(this.speed()),
+      'Крит': pct(this.crit()),
+      'Скорость атаки': pct(1 + this.equipStat('attackSpeed')),
+      'Вампиризм': pct(this.lifesteal()),
+      'Сокр. перезарядки': pct(this.cdr()),
+      'Опыт': pct(this.xpMult()),
+      'Золото': pct(this.goldMult()),
+    };
+  }
+}
+
+class Enemy {
+  constructor(type, x, y, floor, bossDef) {
+    const def = bossDef || MONSTERS[type];
+    this.type = type; this.def = def; this.isBoss = !!bossDef;
+    this.x = x; this.y = y; this.r = def.size;
+    const scale = 1 + 0.13 * (floor - 1);
+    const dscale = 1 + 0.09 * (floor - 1);
+    this.maxHp = Math.round(def.hp * (this.isBoss ? 1 : scale));
+    this.hp = this.maxHp;
+    this.dmg = def.dmg * (this.isBoss ? 1 : dscale);
+    this.speed = def.speed; this.armor = def.armor || 0;
+    this.state = 'idle'; this.target = null;
+    this.wander = { x: 0, y: 0, t: 0 };
+    this.attackTimer = R.float(0, def.attackCd);
+    this.windup = 0; this.windupDir = { x: 0, y: 0 };
+    this.stun = 0; this.slow = 0; this.poisonDps = 0; this.poisonTime = 0;
+    this.kx = 0; this.ky = 0; // отбрасывание
+    this.hitFlash = 0; this.alive = true;
+    this.flowTimer = R.float(0, 0.3);
+    this.dir = { x: 0, y: 0 };
+    this.abilityTimers = {};
+    if (def.abilities) for (const k in def.abilities) this.abilityTimers[k] = def.abilities[k] * 0.6;
+    this.charge = null; this.phase = 1;
+    this.telegraph = null; // {x,y,r,time,total,type}
+    this.stuckTimer = 0; this.lastX = x; this.lastY = y;
+  }
+}
+
+class Projectile {
+  constructor(o) {
+    Object.assign(this, { pierce: 0, size: 4, color: '#fff', life: 1.5, explode: 0, stun: 0, slow: 0, crit: false, spin: false, poison: 0, hit: new Set(), angle: 0 }, o);
+    this.angle = Math.atan2(this.vy, this.vx);
+  }
+}
+
+class Pickup {
+  constructor(x, y, kind, payload) {
+    this.x = x; this.y = y; this.kind = kind; // 'item' | 'gold' | 'consumable'
+    Object.assign(this, payload);
+    this.bob = R.float(0, 6.28); this.age = 0;
+    const a = R.float(0, 6.28), s = R.float(30, 80);
+    this.vx = Math.cos(a) * s; this.vy = Math.sin(a) * s;
+  }
+}
+
+class Chest { constructor(x, y) { this.x = x; this.y = y; this.opened = false; this.r = 14; } }
+class Merchant { constructor(x, y, items) { this.x = x; this.y = y; this.items = items; this.r = 14; } }
+
+// ---------- Генерация предметов ----------
+let ITEM_UID = 1;
+function rollRarity(floor, luck = 1) {
+  const w = { common: RARITY.common.weight, rare: RARITY.rare.weight * (1 + floor * 0.08) * luck, epic: RARITY.epic.weight * (1 + floor * 0.15) * luck };
+  return R.weighted(['common', 'rare', 'epic'], (k) => w[k]);
+}
+function makeItem(baseId, rarity) {
+  const base = ITEM_BASE_BY_ID[baseId];
+  const rar = RARITY[rarity];
+  const stats = {};
+  for (const k in base.stats) stats[k] = roundStat(k, base.stats[k] * (base.stats[k] < 0 ? 1 : rar.mult));
+  // Аффиксы редких/эпических предметов.
+  const pool = AFFIXES.filter((a) => !(a.stat in stats));
+  const picked = R.shuffle(pool.slice()).slice(0, rar.affixes);
+  for (const a of picked) stats[a.stat] = roundStat(a.stat, R.float(a.min, a.max));
+  const name = base.name + RARITY_SUFFIX[rarity];
+  const price = Math.round((30 + base.tier * 18) * rar.price);
+  return { uid: ITEM_UID++, base: baseId, slot: base.slot, name, icon: base.icon, rarity, stats, price, tier: base.tier };
+}
+function roundStat(k, v) {
+  if (['dmg', 'hp', 'armor', 'speed'].includes(k)) return Math.round(v);
+  return Math.round(v * 100) / 100;
+}
+function randomItem(floor, luck = 1) {
+  const pool = ITEM_BASES.filter((b) => b.tier <= floor + 1);
+  const base = R.weighted(pool, (b) => (b.tier >= floor - 2 ? 3 : 1));
+  return makeItem(base.id, rollRarity(floor, luck));
+}
+function randomConsumable() {
+  const keys = Object.keys(CONSUMABLES);
+  return R.weighted(keys, (k) => CONSUMABLES[k].weight);
+}
+function itemStatsText(item) {
+  return Object.entries(item.stats).map(([k, v]) => `${STAT_NAMES[k]} ${STAT_FMT[k](v)}`).join(', ');
+}
+
+if (typeof module !== 'undefined') module.exports = { Player, Enemy, Projectile, Pickup, Chest, Merchant, makeItem, randomItem, rollRarity, randomConsumable, itemStatsText };
+
+// ---- js/render.js ----
+// Отрисовка: карта, сущности, эффекты, HUD.
+
+const COLORS = {
+  floor: '#24242f', floorAlt: '#20202a', wall: '#3a3a4e', wallTop: '#4a4a62', wallEdge: '#2a2a3a', pillar: '#55556e',
+  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
+};
+
+function drawShape(ctx, shape, x, y, r, color, angle = 0) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  if (shape === 'circle') ctx.arc(x, y, r, 0, Math.PI * 2);
+  else if (shape === 'square') { ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.rect(-r, -r, r * 2, r * 2); ctx.restore(); }
+  else if (shape === 'tri') { ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.moveTo(r, 0); ctx.lineTo(-r * 0.8, r * 0.85); ctx.lineTo(-r * 0.8, -r * 0.85); ctx.closePath(); ctx.restore(); }
+  else if (shape === 'diamond') { ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); }
+  else if (shape === 'hex') { for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i; const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r; if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); }
+  ctx.fill();
+}
+
+class Renderer {
+  constructor(game) { this.g = game; this.ctx = game.ctx; }
+  render() {
+    const g = this.g, ctx = this.ctx;
+    ctx.fillStyle = '#07070b'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    if (!g.map || !g.player) return;
+    ctx.save();
+    let sx = 0, sy = 0;
+    if (g.shake > 0) { sx = (Math.random() - 0.5) * g.shake; sy = (Math.random() - 0.5) * g.shake; }
+    ctx.translate(-Math.round(g.camera.x) + sx, -Math.round(g.camera.y) + sy);
+    this.drawMap();
+    this.drawTorches();
+    this.drawChests();
+    this.drawMerchant();
+    this.drawPickups();
+    this.drawTelegraphs();
+    this.drawEnemies();
+    this.drawPlayer();
+    this.drawProjectiles();
+    this.drawEffects();
+    this.drawParticles();
+    this.drawTexts();
+    ctx.restore();
+    this.drawHud();
+  }
+  drawMap() {
+    const g = this.g, ctx = this.ctx, map = g.map;
+    const x0 = Math.max(0, Math.floor(g.camera.x / TILE) - 1), y0 = Math.max(0, Math.floor(g.camera.y / TILE) - 1);
+    const x1 = Math.min(map.w - 1, Math.ceil((g.camera.x + VIEW_W) / TILE) + 1), y1 = Math.min(map.h - 1, Math.ceil((g.camera.y + VIEW_H) / TILE) + 1);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const i = map.idx(x, y);
+      if (!map.explored[i]) continue;
+      const t = map.tiles[i], px = x * TILE, py = y * TILE;
+      if (t === T_WALL) {
+        // Стены рисуем только если рядом есть пол (видимая грань).
+        let nearFloor = false;
+        for (let oy = -1; oy <= 1 && !nearFloor; oy++) for (let ox = -1; ox <= 1; ox++) if (map.get(x + ox, y + oy) !== T_WALL && map.get(x + ox, y + oy) !== T_PILLAR) { nearFloor = true; break; }
+        if (!nearFloor) continue;
+        ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
+        if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+      } else if (t === T_PILLAR) {
+        ctx.fillStyle = COLORS.floor; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
+        ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
+      } else {
+        ctx.fillStyle = ((x + y) & 1) ? COLORS.floor : COLORS.floorAlt; ctx.fillRect(px, py, TILE, TILE);
+        if (t === T_STAIRS) {
+          ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
+          ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+          ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(g.stairsOpen ? '>' : '×', px + TILE / 2, py + TILE / 2 + 1);
+        }
+      }
+      if (!map.visible[i]) { ctx.fillStyle = COLORS.fog; ctx.fillRect(px, py, TILE, TILE); }
+    }
+  }
+  drawTorches() {
+    const g = this.g, ctx = this.ctx, map = g.map;
+    for (const t of map.torches) {
+      const tx = Math.floor(t.x / TILE), ty = Math.floor(t.y / TILE);
+      if (!map.visible[map.idx(tx, ty)]) continue;
+      if (t.x < g.camera.x - 80 || t.x > g.camera.x + VIEW_W + 80 || t.y < g.camera.y - 80 || t.y > g.camera.y + VIEW_H + 80) continue;
+      const fl = 0.85 + Math.sin(g.time * 9 + t.phase) * 0.15;
+      const grad = ctx.createRadialGradient(t.x, t.y + 6, 2, t.x, t.y + 6, 60 * fl);
+      grad.addColorStop(0, 'rgba(255,170,60,0.35)'); grad.addColorStop(1, 'rgba(255,120,30,0)');
+      ctx.fillStyle = grad; ctx.fillRect(t.x - 70, t.y - 70, 140, 140);
+      ctx.fillStyle = '#7a4a1e'; ctx.fillRect(t.x - 2, t.y, 4, 10);
+      ctx.fillStyle = `rgba(255,${160 + Math.round(60 * fl)},60,1)`; ctx.beginPath(); ctx.arc(t.x, t.y - 1, 4 * fl, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  visibleAt(x, y) { const m = this.g.map; return m.visible[m.idx(Math.floor(x / TILE), Math.floor(y / TILE))]; }
+  drawChests() {
+    const ctx = this.ctx;
+    for (const c of this.g.chests) {
+      if (!this.visibleAt(c.x, c.y) && !this.g.map.explored[this.g.map.idx(Math.floor(c.x / TILE), Math.floor(c.y / TILE))]) continue;
+      ctx.fillStyle = c.opened ? '#5a4a2a' : COLORS.chest;
+      ctx.beginPath(); ctx.roundRect(c.x - 13, c.y - 9, 26, 18, 4); ctx.fill();
+      ctx.fillStyle = c.opened ? '#3a3020' : '#7a5a25'; ctx.fillRect(c.x - 13, c.y - 3, 26, 3);
+      if (!c.opened) { ctx.fillStyle = COLORS.gold; ctx.fillRect(c.x - 2, c.y - 4, 4, 6); }
+    }
+  }
+  drawMerchant() {
+    const m = this.g.merchant, ctx = this.ctx;
+    if (!m || !this.g.map.explored[this.g.map.idx(Math.floor(m.x / TILE), Math.floor(m.y / TILE))]) return;
+    ctx.fillStyle = '#1f3a44'; ctx.beginPath(); ctx.roundRect(m.x - 22, m.y + 10, 44, 10, 3); ctx.fill();
+    drawShape(ctx, 'circle', m.x, m.y, 13, COLORS.merchant);
+    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', m.x, m.y + 1);
+    const d = dist(m.x, m.y, this.g.player.x, this.g.player.y);
+    ctx.fillStyle = '#e6e2d3'; ctx.font = '12px sans-serif'; ctx.fillText(d < 60 ? '[E] Торговать' : 'Торговец', m.x, m.y - 22);
+  }
+  drawPickups() {
+    const ctx = this.ctx, g = this.g;
+    for (const it of g.pickups) {
+      if (!this.visibleAt(it.x, it.y)) continue;
+      const bob = Math.sin(g.time * 4 + it.bob) * 2;
+      if (it.kind === 'gold') { ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.arc(it.x, it.y + bob, 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff4c2'; ctx.fillRect(it.x - 1, it.y + bob - 2, 2, 2); }
+      else if (it.kind === 'consumable') { const c = CONSUMABLES[it.id]; ctx.fillStyle = c.color; ctx.beginPath(); ctx.roundRect(it.x - 7, it.y - 9 + bob, 14, 18, 3); ctx.fill(); ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.icon, it.x, it.y + bob + 1); }
+      else {
+        const col = RARITY[it.item.rarity].color;
+        ctx.save(); ctx.translate(it.x, it.y + bob); ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = '#12121a'; ctx.fillRect(-9, -9, 18, 18); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(-9, -9, 18, 18); ctx.restore();
+        ctx.fillStyle = col; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(it.item.icon, it.x, it.y + bob + 1);
+        if (it.item.rarity !== 'common') { ctx.globalAlpha = 0.25 + Math.sin(g.time * 5) * 0.1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(it.x, it.y + bob, 16, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+      }
+    }
+  }
+  drawTelegraphs() {
+    const ctx = this.ctx;
+    for (const e of this.g.enemies) {
+      if (!e.telegraph) continue;
+      const t = e.telegraph, k = 1 - t.time / t.total;
+      ctx.save(); ctx.globalAlpha = 0.25 + k * 0.35;
+      if (t.type === 'circle') { ctx.fillStyle = '#ff5252'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r * (0.5 + 0.5 * k), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke(); }
+      else if (t.type === 'charge') { ctx.translate(e.x, e.y); ctx.rotate(t.angle); ctx.fillStyle = '#ff5252'; ctx.fillRect(0, -e.r, t.len * k, e.r * 2); ctx.globalAlpha = 0.7; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.strokeRect(0, -e.r, t.len, e.r * 2); }
+      ctx.restore();
+    }
+  }
+  drawEnemies() {
+    const ctx = this.ctx, g = this.g;
+    for (const e of g.enemies) {
+      if (!this.visibleAt(e.x, e.y)) continue;
+      const def = e.def;
+      // Тень.
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.8, e.r * 0.9, e.r * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+      const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
+      let color = def.color;
+      if (e.hitFlash > 0) color = '#ffffff';
+      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
+      if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
+      drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : (def.shape === 'square' ? angle * 0 : 0));
+      ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(def.symbol, e.x, e.y + 1);
+      if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, e.y - e.r - 8); }
+      if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, e.y - e.r, 3, 0, Math.PI * 2); ctx.fill(); }
+      // Полоска здоровья.
+      if (e.hp < e.maxHp && !e.isBoss) {
+        const w = e.r * 2 + 6, hy = e.y - e.r - 7;
+        ctx.fillStyle = '#000'; ctx.fillRect(e.x - w / 2, hy, w, 4);
+        ctx.fillStyle = '#e05a4a'; ctx.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
+      }
+    }
+  }
+  drawPlayer() {
+    const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 10, 11, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // Взмах.
+    if (p.swing > 0) {
+      const k = p.swing / 0.14;
+      ctx.save(); ctx.globalAlpha = 0.6 * k; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.stroke();
+      ctx.globalAlpha = 0.18 * k; ctx.fillStyle = hero.color; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    if (p.shield > 0) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#c77dff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    ctx.save();
+    if (p.isInvisible()) ctx.globalAlpha = 0.4;
+    let color = hero.color;
+    if (p.hurtFlash > 0) color = '#ff5252';
+    else if (p.invulnTime > 0 && Math.floor(g.time * 20) % 2 === 0 && !p.dash) color = '#ffffff';
+    drawShape(ctx, 'circle', p.x, p.y, p.r, color);
+    ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
+    // Указатель прицела.
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * (p.r + 9), p.y + p.aim.y * (p.r + 9)); ctx.stroke();
+    ctx.restore();
+    for (const b of p.buffs) {
+      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.font = '11px sans-serif'; ctx.fillText('▲', p.x - 12, p.y - p.r - 8); }
+      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.font = '11px sans-serif'; ctx.fillText('▣', p.x + 12, p.y - p.r - 8); }
+    }
+    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.font = '11px sans-serif'; ctx.fillText('☠', p.x, p.y - p.r - 10); }
+  }
+  drawProjectiles() {
+    const ctx = this.ctx;
+    for (const pr of this.g.projectiles) {
+      ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(pr.angle);
+      ctx.fillStyle = pr.color;
+      if (pr.spin) { ctx.fillRect(-pr.size, -3, pr.size * 2, 6); ctx.fillRect(-3, -pr.size, 6, pr.size * 2); }
+      else if (pr.owner === 'player' && pr.size <= 5) { ctx.fillRect(-10, -1.5, 16, 3); ctx.beginPath(); ctx.moveTo(6, -3); ctx.lineTo(11, 0); ctx.lineTo(6, 3); ctx.fill(); }
+      else { ctx.beginPath(); ctx.arc(0, 0, pr.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(-pr.size * 1.5, 0, pr.size * 0.7, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
+  }
+  drawEffects() {
+    const ctx = this.ctx;
+    for (const ef of this.g.effects) {
+      if (ef.type === 'ring') { const k = 1 - ef.time / ef.max; ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = ef.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
+      else if (ef.type === 'slash') { ctx.save(); ctx.globalAlpha = ef.time / 0.15; ctx.strokeStyle = ef.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, ef.angle - 0.6, ef.angle + 0.6); ctx.stroke(); ctx.restore(); }
+    }
+  }
+  drawParticles() {
+    const ctx = this.ctx;
+    for (const pt of this.g.particles) {
+      ctx.globalAlpha = Math.max(0, pt.life / (pt.max || 0.6));
+      ctx.fillStyle = pt.color;
+      if (pt.fade) { ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill(); }
+      else ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawTexts() {
+    const ctx = this.ctx;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const t of this.g.texts) {
+      ctx.globalAlpha = Math.min(1, t.life * 2);
+      ctx.font = `bold ${Math.round(13 * t.scale)}px sans-serif`;
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(t.text, t.x, t.y);
+      ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+  // ---------- HUD ----------
+  drawHud() {
+    const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero, hs = Save.hero(hero.id);
+    // Затемнение при низком здоровье.
+    if (p.hp / p.maxHp < 0.3) { const grad = ctx.createRadialGradient(VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.35, VIEW_W / 2, VIEW_H / 2, VIEW_H * 0.8); grad.addColorStop(0, 'rgba(180,0,0,0)'); grad.addColorStop(1, `rgba(180,0,0,${0.25 + Math.sin(g.time * 5) * 0.1})`); ctx.fillStyle = grad; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (g.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${g.flash})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    if (g.transition > 0) { ctx.fillStyle = `rgba(0,0,0,${g.transition / 0.6})`; ctx.fillRect(0, 0, VIEW_W, VIEW_H); }
+    // Панель героя.
+    ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(12, 12, 280, 78, 8); ctx.fill();
+    drawShape(ctx, 'circle', 40, 46, 20, hero.color);
+    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, 40, 47);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#e6e2d3'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(`${hero.name}  ·  ур. ${p.level}`, 70, 24);
+    // HP.
+    const hpW = 205;
+    ctx.fillStyle = '#2a1010'; ctx.fillRect(70, 36, hpW, 14);
+    ctx.fillStyle = '#e05a4a'; ctx.fillRect(70, 36, hpW * clamp(p.hp / p.maxHp, 0, 1), 14);
+    if (p.shield > 0) { ctx.fillStyle = 'rgba(199,125,255,0.8)'; ctx.fillRect(70, 36, hpW * clamp(p.shield / p.maxHp, 0, 1), 5); }
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(`${Math.ceil(p.hp)} / ${p.maxHp}`, 70 + hpW / 2, 43);
+    // XP.
+    const need = xpToNext(hs.level);
+    ctx.fillStyle = '#10202a'; ctx.fillRect(70, 56, hpW, 7);
+    ctx.fillStyle = '#6fc3df'; ctx.fillRect(70, 56, hpW * clamp(hs.xp / need, 0, 1), 7);
+    ctx.textAlign = 'left'; ctx.fillStyle = '#9a97a8'; ctx.font = '11px sans-serif'; ctx.fillText(`Опыт ${hs.xp} / ${need}`, 70, 74);
+    ctx.textAlign = 'right'; ctx.fillStyle = '#ffd54f'; ctx.fillText(`${p.gold} зол.`, 70 + hpW, 74);
+    // Этаж, осколки.
+    ctx.textAlign = 'center'; ctx.fillStyle = '#e6e2d3'; ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`Этаж ${g.floor} / ${MAX_FLOOR}`, VIEW_W / 2, 24);
+    ctx.font = '12px sans-serif'; ctx.fillStyle = '#9a97a8'; ctx.fillText(`Убито: ${g.runStats.kills}   Осколки: +${g.runStats.shards}`, VIEW_W / 2, 42);
+    // Босс.
+    if (g.boss && g.boss.alive) {
+      const b = g.boss, w = 420, x = (VIEW_W - w) / 2, y = 56;
+      ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(x - 8, y - 6, w + 16, 32, 6); ctx.fill();
+      ctx.fillStyle = '#2a1010'; ctx.fillRect(x, y + 8, w, 12);
+      ctx.fillStyle = b.phase === 2 ? '#ff1744' : '#c62828'; ctx.fillRect(x, y + 8, w * clamp(b.hp / b.maxHp, 0, 1), 12);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(b.def.name, VIEW_W / 2, y + 1);
+    }
+    // Умения.
+    const skW = 52, gap = 8, total = 3 * skW + 2 * gap + gap + skW;
+    let sx = (VIEW_W - total) / 2, sy = VIEW_H - skW - 16;
+    for (let i = 0; i < 3; i++) {
+      const sk = SKILLS[hero.skills[i]], cd = p.skillCds[i], full = sk.cooldown * (1 - p.cdr());
+      this.drawSkillBox(sx + i * (skW + gap), sy, skW, sk.icon, String(i + 1), cd, full, hero.color, sk.name);
+    }
+    this.drawSkillBox(sx + 3 * (skW + gap), sy, skW, '⇢', 'Shift', p.dodgeCd, 1.4, '#9a97a8', 'Уклонение');
+    // Расходники.
+    const cons = [['potion', 'F'], ['lembas', 'G'], ['fireScroll', 'R'], ['elixir', 'T']];
+    let cx = VIEW_W - 16;
+    for (let i = cons.length - 1; i >= 0; i--) {
+      const [id, key] = cons[i], c = CONSUMABLES[id], n = p.consumables[id];
+      cx -= 46;
+      ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(cx, VIEW_H - 58, 40, 44, 6); ctx.fill();
+      ctx.globalAlpha = n > 0 ? 1 : 0.3;
+      ctx.fillStyle = c.color; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(c.icon, cx + 20, VIEW_H - 40);
+      ctx.fillStyle = '#e6e2d3'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(`${key} ×${n}`, cx + 20, VIEW_H - 22);
+      ctx.globalAlpha = 1;
+    }
+    // Сообщения.
+    ctx.textAlign = 'left'; ctx.font = '13px sans-serif';
+    let my = VIEW_H - 16;
+    for (let i = g.messages.length - 1; i >= 0; i--) { const m = g.messages[i]; ctx.globalAlpha = Math.min(1, m.life); ctx.fillStyle = '#e6e2d3'; ctx.fillText(m.text, 16, my); my -= 18; }
+    ctx.globalAlpha = 1;
+    // Мини-карта.
+    this.drawMinimap();
+    // Баннер.
+    if (g.banner) {
+      const k = Math.min(1, g.banner.time / 0.5, (2.6 - Math.min(2.6, g.banner.time)) * 3 + 0.2);
+      ctx.globalAlpha = clamp(k, 0, 1);
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, VIEW_H / 2 - 50, VIEW_W, 100);
+      ctx.fillStyle = '#d4a94a'; ctx.font = 'bold 36px serif'; ctx.textAlign = 'center'; ctx.fillText(g.banner.text, VIEW_W / 2, VIEW_H / 2 - 8);
+      if (g.banner.sub) { ctx.fillStyle = '#e6e2d3'; ctx.font = '16px sans-serif'; ctx.fillText(g.banner.sub, VIEW_W / 2, VIEW_H / 2 + 24); }
+      ctx.globalAlpha = 1;
+    }
+    // Подсказка на первом этаже.
+    if (g.floor === 1 && g.runStats.time < 12) {
+      ctx.globalAlpha = clamp(12 - g.runStats.time, 0, 1); ctx.fillStyle = '#9a97a8'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('WASD — движение · ЛКМ / Пробел — атака · 1 2 3 — умения · Shift — уклонение · F — зелье · I — инвентарь · E — торговец', VIEW_W / 2, VIEW_H - 112);
+      ctx.globalAlpha = 1;
+    }
+  }
+  drawSkillBox(x, y, w, icon, key, cd, full, color, name) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(8,8,14,0.75)'; ctx.beginPath(); ctx.roundRect(x, y, w, w, 8); ctx.fill();
+    ctx.strokeStyle = cd > 0 ? '#3a3a52' : color; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x, y, w, w, 8); ctx.stroke();
+    ctx.fillStyle = cd > 0 ? '#555' : color; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, x + w / 2, y + w / 2 - 4);
+    if (cd > 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.moveTo(x + w / 2, y + w / 2); ctx.arc(x + w / 2, y + w / 2, w * 0.75, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (cd / full)); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(cd.toFixed(1), x + w / 2, y + w / 2 - 4);
+    }
+    ctx.fillStyle = '#d4a94a'; ctx.font = 'bold 10px sans-serif'; ctx.fillText(key, x + w / 2, y + w - 9);
+  }
+  drawMinimap() {
+    const ctx = this.ctx, g = this.g, map = g.map, p = g.player;
+    const scale = 3, mw = map.w * scale, mh = map.h * scale, x0 = VIEW_W - mw - 12, y0 = 56;
+    ctx.fillStyle = 'rgba(8,8,14,0.6)'; ctx.fillRect(x0 - 4, y0 - 4, mw + 8, mh + 8);
+    for (let y = 0; y < map.h; y++) for (let x = 0; x < map.w; x++) {
+      const i = map.idx(x, y);
+      if (!map.explored[i]) continue;
+      const t = map.tiles[i];
+      if (t === T_WALL) continue;
+      ctx.fillStyle = t === T_STAIRS ? '#d4a94a' : (map.visible[i] ? '#4a4a62' : '#2e2e40');
+      ctx.fillRect(x0 + x * scale, y0 + y * scale, scale, scale);
+    }
+    if (g.merchant) { ctx.fillStyle = '#6fc3df'; ctx.fillRect(x0 + Math.floor(g.merchant.x / TILE) * scale - 1, y0 + Math.floor(g.merchant.y / TILE) * scale - 1, scale + 2, scale + 2); }
+    for (const e of g.enemies) if (this.visibleAt(e.x, e.y)) { ctx.fillStyle = e.isBoss ? '#ff1744' : '#e05a4a'; ctx.fillRect(x0 + Math.floor(e.x / TILE) * scale, y0 + Math.floor(e.y / TILE) * scale, scale, scale); }
+    ctx.fillStyle = g.hero.color; ctx.fillRect(x0 + Math.floor(p.x / TILE) * scale - 1, y0 + Math.floor(p.y / TILE) * scale - 1, scale + 2, scale + 2);
+  }
+}
+
+// ---- js/ui.js ----
+// DOM-интерфейс: меню, выбор героя, лагерь, инвентарь, торговец, результаты.
+
+class UI {
+  constructor(game) { this.g = game; this.root = document.getElementById('ui'); this.selectedItem = null; }
+  hide() { this.root.innerHTML = ''; }
+  render(html) { this.root.innerHTML = html; }
+  bind(selector, evt, fn) { this.root.querySelectorAll(selector).forEach((el) => el.addEventListener(evt, (e) => fn(el, e))); }
+
+  // ---------- Главное меню ----------
+  showMenu() {
+    const d = Save.data, st = d.stats;
+    this.render(`
+      <div class="overlay"><div class="panel" style="min-width:520px">
+        <h1>${GAME_TITLE}</h1>
+        <div class="subtitle">Rogue-like о героях, спускающихся во тьму под горами</div>
+        <div class="menu-buttons">
+          <button class="primary" data-a="heroes">В подземелье</button>
+          <button data-a="camp">Лагерь: улучшения и снаряжение</button>
+          <button data-a="help">Как играть</button>
+          <button class="small" data-a="reset" style="align-self:center;margin-top:8px">Сбросить весь прогресс</button>
+        </div>
+        <div class="footer-row">
+          <span class="shards">◆ Осколки мифрила: ${d.shards}</span>
+          <span class="muted">Походов: ${st.runs} · Побед: ${st.wins} · Лучший этаж: ${st.bestFloor} · Убито: ${st.kills}</span>
+        </div>
+      </div></div>`);
+    this.bind('[data-a=heroes]', 'click', () => this.showHeroSelect());
+    this.bind('[data-a=camp]', 'click', () => this.showCamp('upgrades'));
+    this.bind('[data-a=help]', 'click', () => this.showHelp(() => this.showMenu()));
+    this.bind('[data-a=reset]', 'click', () => { if (confirm('Удалить весь прогресс: уровни героев, осколки, улучшения?')) { Save.reset(); this.showMenu(); } });
+  }
+  showHelp(back) {
+    this.render(`
+      <div class="overlay"><div class="panel" style="max-width:640px">
+        <h2>Как играть</h2>
+        <div class="help">
+          <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> или стрелки — движение. Мышь — прицел. <kbd>ЛКМ</kbd> или <kbd>Пробел</kbd> — атака.</p>
+          <p><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> — умения героя (с перезарядкой). <kbd>Shift</kbd> — уклонение (неуязвимость на время рывка).</p>
+          <p><kbd>F</kbd> — зелье лечения, <kbd>G</kbd> — дорожный хлеб, <kbd>R</kbd> — свиток пламени, <kbd>T</kbd> — эликсир силы.</p>
+          <p><kbd>I</kbd> или <kbd>Tab</kbd> — инвентарь (игра на паузе). <kbd>E</kbd> — поговорить с торговцем. <kbd>Esc</kbd> — пауза.</p>
+          <h3>Правила</h3>
+          <p>Подземелье из ${MAX_FLOOR} этажей. На ${BOSS_FLOORS.join(' и ')} этажах ждут боссы. Найдите лестницу <b style="color:#d4a94a">&gt;</b>, чтобы спуститься.</p>
+          <p>Опыт и уровень героя <b>сохраняются навсегда</b>, даже после смерти. Погибая, вы теряете найденные предметы и золото.</p>
+          <p>За убийства и боссов копятся <span class="shards">осколки мифрила</span>. В лагере на них открываются новые герои, постоянные улучшения и стартовые предметы.</p>
+          <p>Сундуки открываются касанием. Предметы подбираются автоматически, пока в сумке есть место (${BAG_SIZE} ячеек). Золото тянется к герою.</p>
+        </div>
+        <div class="footer-row"><span></span><button data-a="back">Назад</button></div>
+      </div></div>`);
+    this.bind('[data-a=back]', 'click', () => back());
+  }
+
+  // ---------- Выбор героя ----------
+  showHeroSelect() {
+    const d = Save.data;
+    this.heroId = HERO_BY_ID[d.lastHero] && d.heroes[d.lastHero].unlocked ? d.lastHero : 'arator';
+    this.startItemId = d.startItems[d.lastStartItem] ? d.lastStartItem : 'startNone';
+    this.renderHeroSelect();
+  }
+  renderHeroSelect() {
+    const d = Save.data, meta = Save.bonuses();
+    const cards = HEROES.map((h) => {
+      const hs = d.heroes[h.id];
+      const need = xpToNext(hs.level);
+      return `<div class="hero-card ${h.id === this.heroId ? 'selected' : ''} ${hs.unlocked ? '' : 'locked'}" data-hero="${h.id}">
+        <div class="hero-symbol" style="background:${h.color}">${h.symbol}</div>
+        <div class="hero-name">${h.name}</div>
+        <div class="hero-title">${h.title}</div>
+        ${hs.unlocked ? `<div class="hero-level">Уровень ${hs.level}</div><div class="xpbar"><div style="width:${Math.round(100 * hs.xp / need)}%"></div></div>`
+          : `<div class="hero-level" style="color:#d4a94a">🔒 ${h.unlockCost} ◆</div>`}
+      </div>`;
+    }).join('');
+    const h = HERO_BY_ID[this.heroId], hs = d.heroes[this.heroId];
+    const tmp = new Player(h, hs.level, meta);
+    const skills = h.skills.map((id, i) => { const s = SKILLS[id]; return `<div class="skill-item"><div class="skill-key">${i + 1}</div><div><b>${s.icon} ${s.name}</b> <span class="muted">(${s.cooldown} с)</span><br><span class="muted">${s.desc}</span></div></div>`; }).join('');
+    const starts = START_ITEMS.map((s) => {
+      const unlocked = !!d.startItems[s.id];
+      return `<div class="start-item ${s.id === this.startItemId ? 'selected' : ''} ${unlocked ? '' : 'locked'}" data-start="${s.id}">
+        <b>${s.name}</b><div class="muted">${s.desc}</div>${unlocked ? '' : `<div class="shards" style="margin-top:4px">🔒 ${s.cost} ◆ — открыть в лагере</div>`}</div>`;
+    }).join('');
+    this.render(`
+      <div class="overlay"><div class="panel" style="min-width:860px">
+        <div class="row between"><h2 style="margin:0">Выбор героя</h2><span class="shards">◆ ${d.shards}</span></div>
+        <div class="hero-grid" style="margin-top:12px">${cards}</div>
+        <div class="hero-detail">
+          <div class="row between"><div><b style="font-size:18px;color:${h.color}">${h.name}</b> <span class="muted">— ${h.title}</span></div>
+            ${hs.unlocked ? `<span class="muted">Походов: ${hs.runs} · Побед: ${hs.wins}</span>` : `<button class="small primary" data-a="unlock" ${d.shards >= h.unlockCost ? '' : 'disabled'}>Открыть за ${h.unlockCost} ◆</button>`}</div>
+          <div class="muted" style="margin:6px 0 10px">${h.desc}</div>
+          <div class="stat-line">
+            <span>Здоровье <b>${tmp.maxHp}</b></span><span>Урон <b>${Math.round(tmp.damage())}</b></span><span>Броня <b>${tmp.armor()}</b></span>
+            <span>Скорость <b>${Math.round(tmp.speed())}</b></span><span>Крит <b>${pct(tmp.crit())}</b></span>
+            <span>Атака <b>${h.attack.type === 'melee' ? 'ближняя' : 'дальняя'}</b></span>
+          </div>
+          <div class="skill-list">${skills}</div>
+        </div>
+        <h3>Стартовый предмет</h3>
+        <div class="start-items">${starts}</div>
+        <div class="footer-row">
+          <button data-a="back">Назад</button>
+          <button class="primary" data-a="start" ${hs.unlocked ? '' : 'disabled'}>Начать поход</button>
+        </div>
+      </div></div>`);
+    this.bind('[data-hero]', 'click', (el) => { this.heroId = el.dataset.hero; this.renderHeroSelect(); });
+    this.bind('[data-start]', 'click', (el) => { if (d.startItems[el.dataset.start]) { this.startItemId = el.dataset.start; this.renderHeroSelect(); } });
+    this.bind('[data-a=unlock]', 'click', () => { if (d.shards >= h.unlockCost) { d.shards -= h.unlockCost; hs.unlocked = true; Save.save(); this.renderHeroSelect(); } });
+    this.bind('[data-a=back]', 'click', () => this.showMenu());
+    this.bind('[data-a=start]', 'click', () => this.g.startRun(this.heroId, this.startItemId));
+  }
+
+  // ---------- Лагерь ----------
+  showCamp(tab) {
+    const d = Save.data;
+    let body = '';
+    if (tab === 'upgrades') {
+      body = `<div class="upgrade-list">${UPGRADES.map((u) => {
+        const r = Save.rank(u.id), maxed = r >= u.max, cost = upgradeCost(u, r);
+        return `<div class="upgrade"><div><div class="name">${u.name}</div><div class="desc">${u.desc}</div></div>
+          <div class="pips">${Array.from({ length: u.max }, (_, i) => `<div class="pip ${i < r ? 'on' : ''}"></div>`).join('')}</div>
+          <button class="small ${maxed ? '' : 'primary'}" data-up="${u.id}" ${maxed || d.shards < cost ? 'disabled' : ''}>${maxed ? 'Максимум' : cost + ' ◆'}</button></div>`;
+      }).join('')}</div>`;
+    } else {
+      body = `<div class="upgrade-list">${START_ITEMS.filter((s) => s.cost > 0).map((s) => {
+        const un = !!d.startItems[s.id];
+        return `<div class="upgrade"><div><div class="name">${s.name}</div><div class="desc">${s.desc}</div></div><div></div>
+          <button class="small ${un ? '' : 'primary'}" data-si="${s.id}" ${un || d.shards < s.cost ? 'disabled' : ''}>${un ? 'Открыто' : s.cost + ' ◆'}</button></div>`;
+      }).join('')}</div>`;
+    }
+    this.render(`
+      <div class="overlay"><div class="panel" style="min-width:640px">
+        <div class="row between"><h2 style="margin:0">Лагерь</h2><span class="shards">◆ ${d.shards}</span></div>
+        <div class="muted" style="margin:6px 0 12px">Осколки мифрила добываются из монстров и боссов. Улучшения действуют на всех героев навсегда.</div>
+        <div class="tabs"><div class="tab ${tab === 'upgrades' ? 'active' : ''}" data-tab="upgrades">Улучшения</div><div class="tab ${tab === 'items' ? 'active' : ''}" data-tab="items">Стартовые предметы</div></div>
+        ${body}
+        <div class="footer-row"><button data-a="back">Назад</button><button class="primary" data-a="heroes">К выбору героя</button></div>
+      </div></div>`);
+    this.bind('[data-tab]', 'click', (el) => this.showCamp(el.dataset.tab));
+    this.bind('[data-up]', 'click', (el) => { const u = UPGRADE_BY_ID[el.dataset.up], r = Save.rank(u.id), cost = upgradeCost(u, r); if (r < u.max && d.shards >= cost) { d.shards -= cost; d.upgrades[u.id] = r + 1; Save.save(); this.showCamp('upgrades'); } });
+    this.bind('[data-si]', 'click', (el) => { const s = START_ITEMS.find((x) => x.id === el.dataset.si); if (!d.startItems[s.id] && d.shards >= s.cost) { d.shards -= s.cost; d.startItems[s.id] = true; Save.save(); this.showCamp('items'); } });
+    this.bind('[data-a=back]', 'click', () => this.showMenu());
+    this.bind('[data-a=heroes]', 'click', () => this.showHeroSelect());
+  }
+
+  // ---------- Пауза ----------
+  showPause() {
+    this.render(`
+      <div class="overlay"><div class="panel">
+        <h2>Пауза</h2>
+        <div class="menu-buttons">
+          <button class="primary" data-a="resume">Продолжить</button>
+          <button data-a="help">Как играть</button>
+          <button data-a="abandon">Сдаться и вернуться в лагерь</button>
+        </div>
+      </div></div>`);
+    this.bind('[data-a=resume]', 'click', () => { this.g.state = 'run'; this.hide(); });
+    this.bind('[data-a=help]', 'click', () => this.showHelp(() => this.showPause()));
+    this.bind('[data-a=abandon]', 'click', () => { if (confirm('Прервать поход? Найденные предметы и золото пропадут.')) this.g.playerDie('малодушие'); });
+  }
+
+  // ---------- Инвентарь ----------
+  itemHtml(item, cls = '') {
+    if (!item) return '';
+    return `<div class="item-icon rarity-${item.rarity} ${cls}">${item.icon}</div><div><div class="item-name rarity-${item.rarity}">${item.name}</div><div class="item-stats">${itemStatsText(item)}</div></div>`;
+  }
+  compareHtml(item) {
+    const p = this.g.player, eq = p.equipment[item.slot];
+    if (!eq || eq === item) return '';
+    const keys = new Set([...Object.keys(item.stats), ...Object.keys(eq.stats)]);
+    return '<div style="margin-top:6px">По сравнению с надетым: ' + [...keys].map((k) => { const dv = (item.stats[k] || 0) - (eq.stats[k] || 0); if (Math.abs(dv) < 0.001) return ''; return `<span class="compare ${dv < 0 ? 'neg' : ''}">${STAT_NAMES[k]} ${STAT_FMT[k](dv)}</span>`; }).filter(Boolean).join(', ') + '</div>';
+  }
+  showInventory() {
+    const g = this.g, p = g.player;
+    const slots = [['weapon', 'Оружие'], ['armor', 'Броня'], ['trinket', 'Талисман']].map(([s, label]) => {
+      const it = p.equipment[s];
+      return `<div class="slot" data-slot="${s}"><div class="slot-label">${label}</div>${it ? this.itemHtml(it) : '<span class="muted">— пусто —</span>'}</div>`;
+    }).join('');
+    const bag = Array.from({ length: BAG_SIZE }, (_, i) => {
+      const it = p.bag[i];
+      if (!it) return `<div class="bag-slot empty"></div>`;
+      return `<div class="bag-slot ${this.selectedItem === it ? 'selected' : ''}" data-bag="${i}"><div class="item-icon rarity-${it.rarity}">${it.icon}</div><div class="item-name rarity-${it.rarity}">${it.name}</div></div>`;
+    }).join('');
+    const cons = Object.keys(CONSUMABLES).map((id) => { const c = CONSUMABLES[id], n = p.consumables[id]; return `<div class="row between" style="padding:4px 0"><span><b style="color:${c.color}">${c.icon}</b> ${c.name} <span class="muted">×${n}</span><br><span class="muted">${c.desc}</span></span><button class="small" data-use="${id}" ${n > 0 ? '' : 'disabled'}>Использовать</button></div>`; }).join('');
+    const sel = this.selectedItem;
+    let tip = '<span class="muted">Выберите предмет в сумке или надетый предмет.</span>';
+    if (sel) {
+      const equipped = Object.values(p.equipment).includes(sel);
+      tip = `<div class="row">${this.itemHtml(sel)}</div><div class="muted" style="margin-top:4px">${RARITY[sel.rarity].name} · цена ${sel.price} зол.</div>${equipped ? '' : this.compareHtml(sel)}
+        <div class="actions">${equipped ? `<button class="small" data-a="unequip" ${p.bagFull() ? 'disabled' : ''}>Снять</button>` : `<button class="small primary" data-a="equip">Надеть</button><button class="small" data-a="drop">Выбросить</button>`}</div>`;
+    }
+    const stats = Object.entries(p.statsSummary()).map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
+    this.render(`
+      <div class="overlay"><div class="panel inv-panel">
+        <div class="row between"><h2 style="margin:0">Инвентарь</h2><span class="gold">${p.gold} зол.</span></div>
+        <div class="inv-layout" style="margin-top:12px">
+          <div>
+            <h3 style="margin-top:0">Снаряжение</h3><div class="equip-slots">${slots}</div>
+            <h3>Расходники</h3>${cons}
+            <div class="player-stats">${stats}</div>
+          </div>
+          <div>
+            <h3 style="margin-top:0">Сумка (${p.bag.length}/${BAG_SIZE})</h3>
+            <div class="bag-grid">${bag}</div>
+            <div class="item-tip">${tip}</div>
+          </div>
+        </div>
+        <div class="footer-row"><span class="muted">Esc / I — закрыть</span><button class="primary" data-a="close">Закрыть</button></div>
+      </div></div>`);
+    this.bind('[data-bag]', 'click', (el) => { this.selectedItem = p.bag[+el.dataset.bag]; this.showInventory(); });
+    this.bind('[data-slot]', 'click', (el) => { const it = p.equipment[el.dataset.slot]; if (it) { this.selectedItem = it; this.showInventory(); } });
+    this.bind('[data-a=equip]', 'click', () => { g.equipItem(sel); this.selectedItem = null; this.showInventory(); });
+    this.bind('[data-a=unequip]', 'click', () => { g.unequipItem(sel.slot); this.selectedItem = null; this.showInventory(); });
+    this.bind('[data-a=drop]', 'click', () => { g.dropItem(sel); this.selectedItem = null; this.showInventory(); });
+    this.bind('[data-use]', 'click', (el) => { g.useConsumable(el.dataset.use); this.showInventory(); });
+    this.bind('[data-a=close]', 'click', () => { g.state = 'run'; this.hide(); });
+  }
+
+  // ---------- Торговец ----------
+  showShop(m) {
+    const g = this.g, p = g.player;
+    const stock = m.items.map((en, i) => {
+      if (en.kind === 'item') {
+        if (en.sold) return `<div class="shop-item" style="opacity:0.4"><div class="item-icon">—</div><div class="muted">Продано</div><div></div></div>`;
+        return `<div class="shop-item">${this.itemHtml(en.item)}<button class="small primary" data-buy="${i}" ${p.gold >= en.price && !p.bagFull() ? '' : 'disabled'}>${en.price} зол.</button></div>`;
+      }
+      const c = CONSUMABLES[en.id];
+      return `<div class="shop-item"><div class="item-icon" style="color:${c.color}">${c.icon}</div><div><div class="item-name">${c.name} <span class="muted">(осталось ${en.qty})</span></div><div class="item-stats">${c.desc}</div></div><button class="small primary" data-buy="${i}" ${p.gold >= en.price && en.qty > 0 ? '' : 'disabled'}>${en.price} зол.</button></div>`;
+    }).join('');
+    const sell = p.bag.length ? p.bag.map((it, i) => `<div class="shop-item">${this.itemHtml(it)}<button class="small" data-sell="${i}">Продать за ${Math.round(it.price * 0.4)}</button></div>`).join('') : '<div class="muted">Сумка пуста.</div>';
+    this.render(`
+      <div class="overlay"><div class="panel" style="min-width:820px">
+        <div class="row between"><h2 style="margin:0">Торговец</h2><span class="gold">${p.gold} зол.</span></div>
+        <div class="muted" style="margin:4px 0 12px">«Товар редкий, цены честные. Почти.»</div>
+        <div class="inv-layout">
+          <div><h3 style="margin-top:0">Купить</h3><div class="shop-items">${stock}</div></div>
+          <div><h3 style="margin-top:0">Продать (${p.bag.length}/${BAG_SIZE})</h3><div class="shop-items">${sell}</div></div>
+        </div>
+        <div class="footer-row"><span class="muted">Esc / E — закрыть</span><button class="primary" data-a="close">Закрыть</button></div>
+      </div></div>`);
+    this.bind('[data-buy]', 'click', (el) => { g.buy(m.items[+el.dataset.buy]); this.showShop(m); });
+    this.bind('[data-sell]', 'click', (el) => { g.sellItem(p.bag[+el.dataset.sell]); this.showShop(m); });
+    this.bind('[data-a=close]', 'click', () => { g.state = 'run'; this.hide(); });
+  }
+
+  // ---------- Результат ----------
+  showResult(victory, rs, hs) {
+    const g = this.g, h = g.hero;
+    const mins = Math.floor(rs.time / 60), secs = Math.floor(rs.time % 60);
+    this.render(`
+      <div class="overlay"><div class="panel ${victory ? 'banner-win' : 'banner-death'}" style="min-width:520px">
+        <h1>${victory ? 'Тень рассеяна!' : 'Герой пал'}</h1>
+        <div class="subtitle">${victory ? `${h.name} прошёл все ${MAX_FLOOR} этажей Подгорья.` : `${h.name} погиб на этаже ${g.floor}${rs.killer ? ` (${rs.killer})` : ''}. Уровень сохранён, вещи потеряны.`}</div>
+        <div class="result-stats">
+          <div>Этаж: <b>${rs.floor}</b></div><div>Время: <b>${mins}:${String(secs).padStart(2, '0')}</b></div>
+          <div>Убито врагов: <b>${rs.kills}</b></div><div>Боссов: <b>${rs.bossKills}</b></div>
+          <div>Уровней получено: <b>${rs.levels}</b></div><div>Уровень героя: <b>${hs.level}</b></div>
+          <div>Осколков добыто: <b class="shards">+${rs.shards} ◆</b></div><div>Всего осколков: <b class="shards">${Save.data.shards} ◆</b></div>
+        </div>
+        <div class="menu-buttons">
+          <button class="primary" data-a="again">Снова в подземелье</button>
+          <button data-a="camp">В лагерь</button>
+        </div>
+      </div></div>`);
+    this.bind('[data-a=again]', 'click', () => { g.resetRunState(); g.state = 'menu'; this.showHeroSelect(); });
+    this.bind('[data-a=camp]', 'click', () => g.toMenu());
+  }
+}
+
+// ---- js/game.js ----
+// Ядро игры: ввод, состояния, цикл обновления, бой, ИИ, инвентарь.
+
+class Input {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.keys = {}; this.pressed = {};
+    this.mouse = { x: VIEW_W / 2, y: VIEW_H / 2, down: false, rdown: false, clicked: false };
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      this.keys[e.code] = true; this.pressed[e.code] = true;
+      if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+    });
+    window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    window.addEventListener('blur', () => { this.keys = {}; this.mouse.down = false; });
+    const toCanvas = (e) => {
+      const r = canvas.getBoundingClientRect();
+      this.mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
+      this.mouse.y = (e.clientY - r.top) * (canvas.height / r.height);
+    };
+    canvas.addEventListener('mousemove', toCanvas);
+    canvas.addEventListener('mousedown', (e) => { toCanvas(e); if (e.button === 0) { this.mouse.down = true; this.mouse.clicked = true; } if (e.button === 2) this.mouse.rdown = true; });
+    window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouse.down = false; if (e.button === 2) this.mouse.rdown = false; });
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  down(code) { return !!this.keys[code]; }
+  hit(code) { const v = !!this.pressed[code]; this.pressed[code] = false; return v; }
+  endFrame() { this.pressed = {}; this.mouse.clicked = false; }
+}
+
+class Game {
+  constructor(canvas) {
+    this.canvas = canvas; this.ctx = canvas.getContext('2d');
+    this.state = 'menu';
+    this.input = new Input(canvas);
+    Save.load();
+    this.renderer = new Renderer(this);
+    this.ui = new UI(this);
+    this.time = 0; this.msgCooldown = 0;
+    this.resetRunState();
+    this.ui.showMenu();
+  }
+  resetRunState() {
+    this.player = null; this.hero = null; this.floor = 0; this.map = null;
+    this.enemies = []; this.projectiles = []; this.pickups = []; this.particles = []; this.texts = []; this.effects = [];
+    this.chests = []; this.merchant = null; this.boss = null; this.stairs = null; this.stairsOpen = true;
+    this.camera = { x: 0, y: 0 }; this.shake = 0; this.flash = 0; this.messages = [];
+    this.runStats = { kills: 0, shards: 0, gold: 0, bossKills: 0, floor: 1, time: 0, items: 0, levels: 0 };
+    this.flow = null; this.flowTimer = 0; this.banner = null; this.transition = 0; this.bagFullTimer = 0;
+  }
+
+  // ---------- Забег ----------
+  startRun(heroId, startItemId) {
+    this.resetRunState();
+    const def = HERO_BY_ID[heroId];
+    const meta = Save.bonuses();
+    const hs = Save.hero(heroId);
+    this.hero = def;
+    const p = new Player(def, hs.level, meta);
+    p.gold = meta.startGold;
+    p.consumables.potion = meta.startPotions;
+    const si = START_ITEMS.find((s) => s.id === startItemId);
+    if (si) {
+      if (si.item) { const it = makeItem(si.item.base, si.item.rarity); p.equipment[it.slot] = it; }
+      if (si.consumables) for (const k in si.consumables) p.consumables[k] += si.consumables[k];
+    }
+    p.hp = p.maxHp;
+    this.player = p;
+    Save.data.lastHero = heroId; Save.data.lastStartItem = startItemId;
+    Save.data.stats.runs++; hs.runs++;
+    Save.save();
+    this.state = 'run';
+    this.ui.hide();
+    this.loadFloor(1);
+    this.message(`${def.name} спускается в Подгорье. Удачи!`);
+  }
+  loadFloor(n) {
+    this.floor = n; this.runStats.floor = Math.max(this.runStats.floor, n);
+    const gen = generateFloor(n, (R.int(1, 1e9) ^ (n * 7919)) >>> 0);
+    this.map = gen.map;
+    this.enemies = []; this.projectiles = []; this.pickups = []; this.particles = []; this.texts = []; this.effects = []; this.chests = [];
+    this.stairs = gen.stairs; this.boss = null;
+    const p = this.player;
+    p.x = gen.spawn.x; p.y = gen.spawn.y; p.dash = null; p.invulnTime = 1.0;
+    for (const e of gen.enemies) this.enemies.push(new Enemy(e.type, e.x, e.y, n));
+    for (const c of gen.chests) this.chests.push(new Chest(c.x, c.y));
+    this.merchant = gen.merchant ? new Merchant(gen.merchant.x, gen.merchant.y, this.makeShopStock()) : null;
+    if (gen.boss) {
+      const b = new Enemy(gen.boss.id, gen.boss.x, gen.boss.y, n, BOSSES[gen.boss.id]);
+      this.enemies.push(b); this.boss = b; this.stairsOpen = false;
+      this.message(`${b.def.name} преграждает путь!`);
+    } else this.stairsOpen = true;
+    this.map.updateVisibility(Math.floor(p.x / TILE), Math.floor(p.y / TILE), 9);
+    this.flow = null; this.flowTimer = 0;
+    this.camera.x = p.x - VIEW_W / 2; this.camera.y = p.y - VIEW_H / 2;
+    this.banner = { text: gen.boss ? 'Логово босса' : `Этаж ${n}`, sub: gen.boss ? BOSSES[gen.boss.id].name : (n === 1 ? 'Найдите лестницу вниз' : ''), time: 2.6 };
+    this.transition = 0.6;
+    Save.save();
+  }
+  nextFloor() {
+    if (this.floor >= MAX_FLOOR) { this.endRun(true); return; }
+    this.loadFloor(this.floor + 1);
+  }
+  makeShopStock() {
+    const luck = this.player.meta.dropMult;
+    const stock = [];
+    for (let i = 0; i < 3; i++) { const it = randomItem(this.floor + 1, luck * 1.4); stock.push({ kind: 'item', item: it, price: Math.round(it.price * 1.4) }); }
+    stock.push({ kind: 'consumable', id: 'potion', price: CONSUMABLES.potion.price, qty: 3 });
+    stock.push({ kind: 'consumable', id: 'lembas', price: CONSUMABLES.lembas.price, qty: 2 });
+    stock.push({ kind: 'consumable', id: R.chance(0.5) ? 'fireScroll' : 'elixir', price: CONSUMABLES.fireScroll.price, qty: 1 });
+    return stock;
+  }
+  endRun(victory) {
+    const p = this.player, hs = Save.hero(this.hero.id), st = Save.data.stats;
+    st.kills += this.runStats.kills; st.bestFloor = Math.max(st.bestFloor, this.runStats.floor);
+    st.bossKills += this.runStats.bossKills;
+    if (victory) { st.wins++; hs.wins++; const bonus = 100; Save.data.shards += bonus; this.runStats.shards += bonus; }
+    Save.save();
+    this.state = victory ? 'win' : 'dead';
+    this.ui.showResult(victory, this.runStats, hs);
+  }
+  toMenu() { this.resetRunState(); this.state = 'menu'; this.ui.showMenu(); }
+
+  // ---------- Цикл ----------
+  update(dt) {
+    this.time += dt;
+    const inp = this.input;
+    if (this.state === 'run') {
+      if (inp.hit('Escape')) { this.state = 'paused'; this.ui.showPause(); inp.endFrame(); return; }
+      if (inp.hit('KeyI') || inp.hit('Tab')) { this.state = 'inventory'; this.ui.showInventory(); inp.endFrame(); return; }
+      this.runStats.time += dt;
+      this.updatePlayer(dt);
+      this.updateEnemies(dt);
+      this.updateProjectiles(dt);
+      this.updatePickups(dt);
+      this.updateWorld(dt);
+    } else if (this.state === 'paused') {
+      if (inp.hit('Escape')) { this.state = 'run'; this.ui.hide(); }
+    } else if (this.state === 'inventory') {
+      if (inp.hit('Escape') || inp.hit('KeyI') || inp.hit('Tab')) { this.state = 'run'; this.ui.hide(); }
+    } else if (this.state === 'shop') {
+      if (inp.hit('Escape') || inp.hit('KeyE')) { this.state = 'run'; this.ui.hide(); }
+    }
+    this.updateEffects(dt);
+    inp.endFrame();
+  }
+
+  // ---------- Игрок ----------
+  updatePlayer(dt) {
+    const p = this.player, inp = this.input, map = this.map;
+    p.tickTimers(dt);
+    // Регенерация и яд.
+    if (p.regen() > 0) p.hp = Math.min(p.maxHp, p.hp + p.regen() * dt);
+    if (p.poisonTime > 0) { p.poisonTime -= dt; p.hp -= p.poison * dt; if (p.hp <= 0) { this.playerDie('яд'); return; } }
+    // Прицел по мыши.
+    const wx = inp.mouse.x + this.camera.x, wy = inp.mouse.y + this.camera.y;
+    const ad = dist(p.x, p.y, wx, wy);
+    if (ad > 4) { p.aim.x = (wx - p.x) / ad; p.aim.y = (wy - p.y) / ad; }
+    // Движение.
+    let mx = 0, my = 0;
+    if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
+    if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
+    if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
+    if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+    const ml = Math.hypot(mx, my);
+    if (ml > 0) { mx /= ml; my /= ml; }
+    p.vx = mx; p.vy = my;
+    if (p.dash) {
+      const d = p.dash;
+      const step = Math.min(dt, d.time);
+      this.moveEntity(p, d.vx * step, d.vy * step);
+      d.time -= step;
+      if (d.dmgMult) {
+        for (const e of this.enemies) {
+          if (d.hit.has(e) || !e.alive) continue;
+          if (dist(p.x, p.y, e.x, e.y) < p.r + e.r + 6) { d.hit.add(e); this.hitEnemy(e, p.damage() * d.dmgMult, { knockback: 200 }); }
+        }
+      }
+      this.particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, life: 0.25, max: 0.25, color: this.hero.color, size: 8, fade: true });
+      if (d.time <= 0) p.dash = null;
+    } else if (p.stunTime <= 0) {
+      const sp = p.speed();
+      this.moveEntity(p, mx * sp * dt, my * sp * dt);
+    }
+    // Умения.
+    const skillKeys = ['Digit1', 'Digit2', 'Digit3'];
+    for (let i = 0; i < 3; i++) {
+      if (inp.hit(skillKeys[i]) && p.stunTime <= 0) this.useSkill(i);
+    }
+    if ((inp.hit('ShiftLeft') || inp.hit('ShiftRight')) && p.dodgeCd <= 0 && !p.dash && p.stunTime <= 0) {
+      const dir = ml > 0 ? { x: mx, y: my } : { x: p.aim.x, y: p.aim.y };
+      this.playerDash(p, dir, 110, 0.18, { invuln: true });
+      p.dodgeCd = 1.4;
+    }
+    if (inp.hit('KeyF')) this.useConsumable('potion');
+    if (inp.hit('KeyG')) this.useConsumable('lembas');
+    if (inp.hit('KeyR')) this.useConsumable('fireScroll');
+    if (inp.hit('KeyT')) this.useConsumable('elixir');
+    // Атака.
+    if ((inp.mouse.down || inp.down('Space')) && p.attackTimer <= 0 && !p.dash && p.stunTime <= 0) this.playerAttack();
+    // Взаимодействие.
+    if (inp.hit('KeyE')) {
+      if (this.merchant && dist(p.x, p.y, this.merchant.x, this.merchant.y) < 60) { this.state = 'shop'; this.ui.showShop(this.merchant); return; }
+    }
+    // Сундуки.
+    for (const c of this.chests) if (!c.opened && dist(p.x, p.y, c.x, c.y) < p.r + c.r + 2) this.openChest(c);
+    // Лестница.
+    const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+    if (map.get(tx, ty) === T_STAIRS) {
+      if (this.stairsOpen && this.transition <= 0) { this.nextFloor(); return; }
+    }
+    // Видимость и камера.
+    if (tx !== p.lastTx || ty !== p.lastTy) { map.updateVisibility(tx, ty, 9); p.lastTx = tx; p.lastTy = ty; this.flow = null; }
+    const cx = clamp(p.x - VIEW_W / 2, Math.min(0, (map.w * TILE - VIEW_W) / 2), Math.max(0, map.w * TILE - VIEW_W));
+    const cy = clamp(p.y - VIEW_H / 2, Math.min(0, (map.h * TILE - VIEW_H) / 2), Math.max(0, map.h * TILE - VIEW_H));
+    this.camera.x = lerp(this.camera.x, cx, Math.min(1, dt * 8));
+    this.camera.y = lerp(this.camera.y, cy, Math.min(1, dt * 8));
+  }
+  moveEntity(e, dx, dy) {
+    const map = this.map;
+    // Дробим шаг, чтобы не проскочить стену на большой скорости.
+    const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8));
+    const sx = dx / steps, sy = dy / steps;
+    for (let i = 0; i < steps; i++) {
+      if (!map.circleBlocked(e.x + sx, e.y, e.r)) e.x += sx;
+      if (!map.circleBlocked(e.x, e.y + sy, e.r)) e.y += sy;
+    }
+    e.x = clamp(e.x, e.r, map.w * TILE - e.r); e.y = clamp(e.y, e.r, map.h * TILE - e.r);
+  }
+  playerAttack() {
+    const p = this.player, atk = this.hero.attack;
+    p.attackTimer = p.attackCooldown();
+    let mult = 1;
+    if (p.sneak) { mult = 3; p.sneak = false; p.buffs = p.buffs.filter((b) => b.stat !== 'invisible'); this.addText(p.x, p.y - 24, 'Удар из тени!', '#b0bec5'); }
+    if (atk.type === 'melee') {
+      const a = Math.atan2(p.aim.y, p.aim.x);
+      p.swing = 0.14; p.swingAngle = a; p.swingRange = atk.range; p.swingArc = atk.arc;
+      let hitAny = false;
+      for (const e of this.enemies) {
+        if (!e.alive) continue;
+        const d = dist(p.x, p.y, e.x, e.y);
+        if (d > atk.range + e.r) continue;
+        if (Math.abs(angleDiff(a, angleTo(p.x, p.y, e.x, e.y))) > atk.arc / 2 + Math.asin(Math.min(1, e.r / Math.max(d, 1)))) continue;
+        this.hitEnemy(e, p.damage() * mult, { knockback: 140 });
+        hitAny = true;
+      }
+      if (!hitAny) this.effects.push({ type: 'miss', x: p.x, y: p.y, time: 0.1 });
+    } else {
+      this.spawnProjectile({ x: p.x + p.aim.x * 10, y: p.y + p.aim.y * 10, vx: p.aim.x * atk.speed, vy: p.aim.y * atk.speed, dmg: p.damage() * mult, owner: 'player', size: atk.size, color: atk.color, life: 1.2 });
+    }
+  }
+  useSkill(i) {
+    const p = this.player;
+    if (p.skillCds[i] > 0) return;
+    const sk = SKILLS[this.hero.skills[i]];
+    sk.use(this, p, { x: p.aim.x, y: p.aim.y });
+    p.skillCds[i] = sk.cooldown * (1 - p.cdr());
+  }
+  useConsumable(id) {
+    const p = this.player;
+    if (!p.consumables[id] || p.consumables[id] <= 0) { this.message(`Нет: ${CONSUMABLES[id].name}`); return false; }
+    p.consumables[id]--;
+    const c = CONSUMABLES[id];
+    if (id === 'potion') this.healPlayer(p.maxHp * 0.4 * p.meta.potionMult);
+    else if (id === 'lembas') { this.healPlayer(p.maxHp * 0.2 * p.meta.potionMult); p.addBuff('speed', 0.25, 6); }
+    else if (id === 'fireScroll') { this.playerAoe(p, 140, 3.0, { color: '#ff7043', knockback: 200 }); this.shake = Math.max(this.shake, 8); }
+    else if (id === 'elixir') { p.addBuff('dmg', 0.3, 12); p.addBuff('armor', 10, 12); }
+    this.addText(p.x, p.y - 22, c.name, c.color);
+    return true;
+  }
+  healPlayer(amount) {
+    const p = this.player;
+    const before = p.hp;
+    p.hp = Math.min(p.maxHp, p.hp + amount);
+    const real = Math.round(p.hp - before);
+    if (real > 0) this.addText(p.x + R.float(-8, 8), p.y - 16, '+' + real, '#7cd67c');
+    this.burst(p.x, p.y, '#7cd67c', 8);
+  }
+  playerDash(p, dir, distance, time, opts) {
+    const l = Math.hypot(dir.x, dir.y) || 1;
+    p.dash = { vx: (dir.x / l) * distance / time, vy: (dir.y / l) * distance / time, time, dmgMult: opts.dmgMult || 0, hit: new Set() };
+    if (opts.invuln) p.invulnTime = Math.max(p.invulnTime, time + 0.05);
+  }
+  playerAoe(p, radius, mult, opts) {
+    this.effects.push({ type: 'ring', x: p.x, y: p.y, r: radius, time: 0.35, max: 0.35, color: opts.color || '#fff' });
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      if (dist(p.x, p.y, e.x, e.y) <= radius + e.r) this.hitEnemy(e, p.damage() * mult, { knockback: opts.knockback || 0, stun: opts.stun || 0 });
+    }
+    this.burst(p.x, p.y, opts.color || '#fff', 18, radius * 1.5);
+  }
+  spawnProjectile(o) { this.projectiles.push(new Projectile(o)); }
+  flashScreen(v) { this.flash = Math.max(this.flash, v); }
+
+  // ---------- Урон ----------
+  hitEnemy(e, dmg, opts = {}) {
+    if (!e.alive) return;
+    const p = this.player;
+    let crit = opts.crit || R.chance(p.crit());
+    if (crit) dmg *= 1.8;
+    dmg = Math.max(1, dmg - e.armor);
+    dmg = Math.round(dmg);
+    e.hp -= dmg; e.hitFlash = 0.12;
+    if (e.state === 'idle') { e.state = 'chase'; e.target = p; e.memory = 4; }
+    this.addText(e.x + R.float(-10, 10), e.y - e.r - 6, String(dmg) + (crit ? '!' : ''), crit ? '#ffd54f' : '#ffffff', crit ? 1.3 : 1);
+    if (opts.knockback && !e.isBoss) { const a = angleTo(p.x, p.y, e.x, e.y); e.kx += Math.cos(a) * opts.knockback; e.ky += Math.sin(a) * opts.knockback; }
+    if (opts.stun && !e.isBoss) e.stun = Math.max(e.stun, opts.stun);
+    if (opts.stun && e.isBoss) e.stun = Math.max(e.stun, opts.stun * 0.3);
+    if (p.lifesteal() > 0) p.hp = Math.min(p.maxHp, p.hp + dmg * p.lifesteal());
+    this.burst(e.x, e.y, e.def.color, 4, 60);
+    if (e.hp <= 0) this.killEnemy(e);
+  }
+  damagePlayer(amount, source) {
+    const p = this.player;
+    if (p.invulnTime > 0) return;
+    amount = Math.max(amount * 0.25, amount - p.armor());
+    if (p.shield > 0) { const abs = Math.min(p.shield, amount); p.shield -= abs; amount -= abs; if (abs > 0) this.addText(p.x, p.y - 26, '-' + Math.round(abs) + ' щит', '#c77dff'); }
+    amount = Math.round(amount);
+    if (amount <= 0) return;
+    p.hp -= amount; p.hurtFlash = 0.15; p.invulnTime = Math.max(p.invulnTime, 0.12);
+    this.shake = Math.max(this.shake, Math.min(10, amount / 4 + 2));
+    this.addText(p.x + R.float(-8, 8), p.y - 18, '-' + amount, '#e05a4a', 1.1);
+    this.burst(p.x, p.y, '#e05a4a', 6, 70);
+    if (p.hp <= 0) this.playerDie(source && source.def ? source.def.name : 'неизвестность');
+  }
+  playerDie(killer) {
+    if (this.state !== 'run') return;
+    const p = this.player;
+    p.hp = 0;
+    this.burst(p.x, p.y, this.hero.color, 30, 160);
+    this.shake = 14;
+    this.runStats.killer = killer;
+    this.message(`${this.hero.name} пал на этаже ${this.floor}.`);
+    this.endRun(false);
+  }
+  killEnemy(e) {
+    e.alive = false;
+    const p = this.player, def = e.def;
+    this.burst(e.x, e.y, def.color, e.isBoss ? 60 : 12, e.isBoss ? 220 : 110);
+    this.runStats.kills++;
+    // Опыт (постоянный).
+    const xp = Math.round(def.xp * p.xpMult());
+    const ups = Save.addHeroXp(this.hero.id, xp);
+    this.addText(e.x, e.y - e.r - 20, '+' + xp + ' оп.', '#6fc3df', 0.9);
+    if (ups > 0) {
+      p.level = Save.hero(this.hero.id).level;
+      this.runStats.levels += ups;
+      this.healPlayer(p.maxHp * 0.3);
+      this.addText(p.x, p.y - 34, `Уровень ${p.level}!`, '#ffd54f', 1.5);
+      this.message(`${this.hero.name} достигает уровня ${p.level}!`);
+      this.effects.push({ type: 'ring', x: p.x, y: p.y, r: 60, time: 0.6, max: 0.6, color: '#ffd54f' });
+    }
+    // Осколки.
+    Save.data.shards += def.shards; this.runStats.shards += def.shards;
+    // Золото.
+    const gold = Math.round(R.int(def.gold[0], def.gold[1]) * p.goldMult());
+    if (gold > 0) this.pickups.push(new Pickup(e.x, e.y, 'gold', { amount: gold }));
+    // Лут.
+    const luck = p.meta.dropMult;
+    if (e.isBoss) {
+      this.runStats.bossKills++;
+      for (let i = 0; i < 2; i++) { const rar = R.chance(0.5) ? 'epic' : 'rare'; const pool = ITEM_BASES.filter((b) => b.tier <= this.floor + 2 && b.tier >= this.floor - 3); const base = R.pick(pool); this.pickups.push(new Pickup(e.x, e.y, 'item', { item: makeItem(base.id, rar) })); }
+      this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: 'potion' }));
+      this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: 'potion' }));
+      this.stairsOpen = true; this.boss = null;
+      this.message(`${def.name} повержен! Путь вниз открыт.`);
+      this.banner = { text: 'Босс повержен', sub: 'Лестница открыта', time: 2.5 };
+      this.shake = 16;
+      if (this.floor >= MAX_FLOOR) this.banner = { text: 'Тень рассеяна', sub: 'Спуститесь по лестнице, чтобы завершить поход', time: 4 };
+    } else {
+      const dropChance = (0.05 + def.xp / 400) * luck;
+      if (R.chance(dropChance)) this.pickups.push(new Pickup(e.x, e.y, 'item', { item: randomItem(this.floor, luck) }));
+      if (R.chance(0.10 * luck)) this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: randomConsumable() }));
+    }
+    Save.save();
+  }
+
+  // ---------- Враги ----------
+  updateEnemies(dt) {
+    const p = this.player;
+    this.flowTimer -= dt;
+    if (!this.flow || this.flowTimer <= 0) { this.flow = this.map.flowField(Math.floor(p.x / TILE), Math.floor(p.y / TILE)); this.flowTimer = 0.3; }
+    for (const e of this.enemies) if (e.alive) this.updateEnemy(e, dt);
+    this.enemies = this.enemies.filter((e) => e.alive);
+    // Расталкивание врагов друг от друга.
+    for (let i = 0; i < this.enemies.length; i++) for (let j = i + 1; j < this.enemies.length; j++) {
+      const a = this.enemies[i], b = this.enemies[j];
+      const d = dist(a.x, a.y, b.x, b.y), min = a.r + b.r;
+      if (d < min && d > 0.01) { const push = (min - d) / 2, ang = angleTo(a.x, a.y, b.x, b.y); const px = Math.cos(ang) * push, py = Math.sin(ang) * push; this.moveEntity(a, -px, -py); this.moveEntity(b, px, py); }
+    }
+  }
+  updateEnemy(e, dt) {
+    const p = this.player, def = e.def, map = this.map;
+    e.hitFlash = Math.max(0, e.hitFlash - dt);
+    e.stun = Math.max(0, e.stun - dt); e.slow = Math.max(0, e.slow - dt);
+    if (e.poisonTime > 0) { e.poisonTime -= dt; e.hp -= e.poisonDps * dt; if (e.hp <= 0) { this.killEnemy(e); return; } }
+    // Отбрасывание.
+    if (Math.abs(e.kx) > 1 || Math.abs(e.ky) > 1) { this.moveEntity(e, e.kx * dt, e.ky * dt); e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt); }
+    if (e.telegraph) { e.telegraph.time -= dt; if (e.telegraph.time <= 0) { this.resolveTelegraph(e); } return; }
+    if (e.charge) { this.updateCharge(e, dt); return; }
+    if (e.stun > 0) { e.windup = 0; return; }
+    const d = dist(p.x, p.y, e.x, e.y);
+    const etx = Math.floor(e.x / TILE), ety = Math.floor(e.y / TILE), ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
+    const los = d < def.sight && lineOfSight(map, etx, ety, ptx, pty);
+    const canSee = los && !p.isInvisible();
+    const speed = e.speed * (e.slow > 0 ? 0.5 : 1) * (e.phase === 2 ? 1.25 : 1);
+    if (e.state === 'idle') {
+      if (canSee) { e.state = 'chase'; e.memory = 4; if (!e.isBoss) this.addText(e.x, e.y - e.r - 8, '!', '#ffd54f'); }
+      else {
+        e.wander.t -= dt;
+        if (e.wander.t <= 0) { e.wander.t = R.float(1, 3); if (R.chance(0.5)) { const a = R.float(0, 6.28); e.wander.x = Math.cos(a); e.wander.y = Math.sin(a); } else { e.wander.x = 0; e.wander.y = 0; } }
+        this.moveEntity(e, e.wander.x * speed * 0.35 * dt, e.wander.y * speed * 0.35 * dt);
+        return;
+      }
+    }
+    if (e.state === 'windup') {
+      e.windup -= dt;
+      if (e.windup <= 0) { this.enemyAttack(e); e.state = 'chase'; }
+      return;
+    }
+    // chase
+    if (canSee) e.memory = 4; else { e.memory -= dt; if (e.memory <= 0) { e.state = 'idle'; return; } }
+    e.attackTimer -= dt;
+    const inRange = def.ranged ? (d <= def.attackRange && los) : (d <= def.attackRange + p.r);
+    if (inRange && e.attackTimer <= 0 && !p.isInvisible()) {
+      e.state = 'windup'; e.windup = def.windup; e.windupDir = { x: (p.x - e.x) / (d || 1), y: (p.y - e.y) / (d || 1) };
+      e.attackTimer = def.attackCd;
+      return;
+    }
+    // Способности босса.
+    if (e.isBoss && this.updateBossAbilities(e, dt, d, los)) return;
+    // Навигация.
+    let dx = 0, dy = 0;
+    if (def.ranged && d < def.keepDistance && los) {
+      // Держим дистанцию.
+      dx = (e.x - p.x) / (d || 1); dy = (e.y - p.y) / (d || 1);
+      const nx = e.x + dx * speed * dt, ny = e.y + dy * speed * dt;
+      if (map.circleBlocked(nx, ny, e.r)) { const t = dx; dx = -dy; dy = t; }
+    } else if (d < TILE * 1.6 && los) {
+      dx = (p.x - e.x) / (d || 1); dy = (p.y - e.y) / (d || 1);
+    } else {
+      const n = this.flowStep(etx, ety);
+      if (n) { const cx = (n.x + 0.5) * TILE, cy = (n.y + 0.5) * TILE; const dd = dist(e.x, e.y, cx, cy) || 1; dx = (cx - e.x) / dd; dy = (cy - e.y) / dd; }
+      else { dx = (p.x - e.x) / (d || 1); dy = (p.y - e.y) / (d || 1); }
+    }
+    // Не наступаем на игрока.
+    if (!def.ranged && d < e.r + p.r + 2) { dx = 0; dy = 0; }
+    e.dir.x = dx; e.dir.y = dy;
+    this.moveEntity(e, dx * speed * dt, dy * speed * dt);
+  }
+  flowStep(tx, ty) {
+    const f = this.flow, map = this.map;
+    if (!map.inBounds(tx, ty)) return null;
+    const here = f[map.idx(tx, ty)];
+    if (here < 0) return null;
+    let best = null, bd = here;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (!ox && !oy) continue;
+      const nx = tx + ox, ny = ty + oy;
+      if (!map.inBounds(nx, ny) || map.isWall(nx, ny)) continue;
+      if (ox && oy && (map.isWall(tx + ox, ty) || map.isWall(tx, ty + oy))) continue;
+      const v = f[map.idx(nx, ny)];
+      if (v >= 0 && v < bd) { bd = v; best = { x: nx, y: ny }; }
+    }
+    return best;
+  }
+  enemyAttack(e) {
+    const p = this.player, def = e.def;
+    const d = dist(p.x, p.y, e.x, e.y);
+    if (def.ranged) {
+      const a = angleTo(e.x, e.y, p.x, p.y);
+      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
+    } else {
+      this.effects.push({ type: 'slash', x: e.x, y: e.y, angle: Math.atan2(e.windupDir.y, e.windupDir.x), r: def.attackRange + 6, time: 0.15, color: def.color });
+      if (d <= def.attackRange + p.r + 10) {
+        this.damagePlayer(e.dmg, e);
+        if (def.poison) { p.poison = def.poison * (1 + this.floor * 0.1); p.poisonTime = 4; }
+        if (def.knockback) { const a = angleTo(e.x, e.y, p.x, p.y); this.moveEntity(p, Math.cos(a) * def.knockback * 0.25, Math.sin(a) * def.knockback * 0.25); }
+      }
+    }
+  }
+  // ---------- Боссы ----------
+  updateBossAbilities(e, dt, d, los) {
+    const p = this.player, ab = e.def.abilities;
+    if (e.hp < e.maxHp * 0.5 && e.phase === 1) { e.phase = 2; this.message(`${e.def.name} впадает в ярость!`); this.burst(e.x, e.y, '#ff1744', 40, 200); this.shake = 10; }
+    const rate = e.phase === 2 ? 1.4 : 1;
+    for (const k in ab) e.abilityTimers[k] -= dt * rate;
+    if (e.def.id === 'grazgot') {
+      if (e.abilityTimers.charge <= 0 && d > 120 && los) { e.abilityTimers.charge = ab.charge; e.telegraph = { type: 'charge', angle: angleTo(e.x, e.y, p.x, p.y), time: 0.6, total: 0.6, len: 420 }; return true; }
+      if (e.abilityTimers.slam <= 0 && d < 100) { e.abilityTimers.slam = ab.slam; e.telegraph = { type: 'circle', x: e.x, y: e.y, r: 120, time: 0.7, total: 0.7, dmgMult: 1.4 }; return true; }
+      if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, 'goblin', 3); return false; }
+    } else if (e.def.id === 'morgul') {
+      if (e.abilityTimers.blink <= 0 && d > 160) { e.abilityTimers.blink = ab.blink; this.blinkBoss(e); return false; }
+      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
+      if (e.abilityTimers.scream <= 0 && d < 220) { e.abilityTimers.scream = ab.scream; e.telegraph = { type: 'circle', x: e.x, y: e.y, r: 210, time: 0.8, total: 0.8, dmgMult: 0.9, slow: 3 }; return true; }
+      if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, e.phase === 2 ? 'shadow' : 'wraith', 2); return false; }
+    }
+    return false;
+  }
+  resolveTelegraph(e) {
+    const t = e.telegraph, p = this.player; e.telegraph = null;
+    if (t.type === 'charge') {
+      e.charge = { vx: Math.cos(t.angle) * 560, vy: Math.sin(t.angle) * 560, time: 0.55, hit: false };
+    } else if (t.type === 'circle') {
+      this.effects.push({ type: 'ring', x: t.x, y: t.y, r: t.r, time: 0.4, max: 0.4, color: e.def.color });
+      this.shake = Math.max(this.shake, 9);
+      if (dist(p.x, p.y, t.x, t.y) <= t.r + p.r) { this.damagePlayer(e.dmg * t.dmgMult, e); if (t.slow) p.slowTime = Math.max(p.slowTime, t.slow); }
+    }
+  }
+  updateCharge(e, dt) {
+    const c = e.charge, p = this.player;
+    const ox = e.x, oy = e.y;
+    this.moveEntity(e, c.vx * dt, c.vy * dt);
+    if (dist(ox, oy, e.x, e.y) < Math.hypot(c.vx, c.vy) * dt * 0.5) { c.time = 0; this.shake = Math.max(this.shake, 6); }
+    this.particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, life: 0.3, max: 0.3, color: e.def.color, size: 10, fade: true });
+    if (!c.hit && dist(p.x, p.y, e.x, e.y) < p.r + e.r + 4) { c.hit = true; this.damagePlayer(e.dmg * 1.5, e); const a = Math.atan2(c.vy, c.vx); this.moveEntity(p, Math.cos(a) * 60, Math.sin(a) * 60); }
+    c.time -= dt;
+    if (c.time <= 0) e.charge = null;
+  }
+  summonMinions(e, type, n) {
+    this.addText(e.x, e.y - e.r - 14, 'Ко мне!', '#ff8a65', 1.2);
+    for (let i = 0; i < n; i++) {
+      for (let t = 0; t < 10; t++) {
+        const a = R.float(0, 6.28), rr = R.float(50, 110);
+        const x = e.x + Math.cos(a) * rr, y = e.y + Math.sin(a) * rr;
+        if (!this.map.circleBlocked(x, y, 14)) { const m = new Enemy(type, x, y, this.floor); m.state = 'chase'; m.memory = 6; this.enemies.push(m); this.burst(x, y, MONSTERS[type].color, 8, 80); break; }
+      }
+    }
+  }
+  blinkBoss(e) {
+    const p = this.player;
+    this.burst(e.x, e.y, '#7e57c2', 20, 120);
+    for (let t = 0; t < 20; t++) {
+      const a = R.float(0, 6.28), rr = R.float(90, 140);
+      const x = p.x + Math.cos(a) * rr, y = p.y + Math.sin(a) * rr;
+      if (!this.map.circleBlocked(x, y, e.r + 2)) { e.x = x; e.y = y; break; }
+    }
+    this.burst(e.x, e.y, '#7e57c2', 20, 120);
+    this.addText(e.x, e.y - e.r - 12, '...', '#b39ddb');
+  }
+
+  // ---------- Снаряды ----------
+  updateProjectiles(dt) {
+    const p = this.player;
+    for (const pr of this.projectiles) {
+      if (pr.dead) continue;
+      pr.life -= dt;
+      const steps = Math.max(1, Math.ceil(Math.hypot(pr.vx, pr.vy) * dt / 10));
+      for (let s = 0; s < steps && !pr.dead; s++) {
+        pr.x += pr.vx * dt / steps; pr.y += pr.vy * dt / steps;
+        if (this.map.circleBlocked(pr.x, pr.y, 2)) { this.projectileEnd(pr); break; }
+        if (pr.owner === 'player') {
+          for (const e of this.enemies) {
+            if (!e.alive || pr.hit.has(e)) continue;
+            if (dist(pr.x, pr.y, e.x, e.y) < e.r + pr.size) {
+              pr.hit.add(e);
+              if (pr.explode) { this.projectileEnd(pr); break; }
+              this.hitEnemy(e, pr.dmg, { crit: pr.crit, stun: pr.stun, knockback: 80 });
+              if (pr.pierce > 0) pr.pierce--; else { pr.dead = true; break; }
+            }
+          }
+        } else if (dist(pr.x, pr.y, p.x, p.y) < p.r + pr.size) {
+          pr.dead = true;
+          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
+          break;
+        }
+      }
+      if (pr.life <= 0 && !pr.dead) this.projectileEnd(pr);
+      if (pr.spin) pr.angle += dt * 20;
+    }
+    this.projectiles = this.projectiles.filter((pr) => !pr.dead);
+  }
+  projectileEnd(pr) {
+    pr.dead = true;
+    if (pr.explode && pr.owner === 'player') {
+      this.effects.push({ type: 'ring', x: pr.x, y: pr.y, r: pr.explode, time: 0.35, max: 0.35, color: pr.color });
+      this.burst(pr.x, pr.y, pr.color, 22, 150);
+      this.shake = Math.max(this.shake, 5);
+      for (const e of this.enemies) if (e.alive && dist(pr.x, pr.y, e.x, e.y) <= pr.explode + e.r) this.hitEnemy(e, pr.dmg, { knockback: 120 });
+    } else this.burst(pr.x, pr.y, pr.color, 3, 50);
+  }
+
+  // ---------- Лут ----------
+  updatePickups(dt) {
+    const p = this.player;
+    this.bagFullTimer = Math.max(0, this.bagFullTimer - dt);
+    for (const it of this.pickups) {
+      it.age += dt;
+      if (it.age < 0.4) { this.moveEntity(Object.assign(it, { r: 6 }), it.vx * dt, it.vy * dt); it.vx *= 0.9; it.vy *= 0.9; continue; }
+      const d = dist(p.x, p.y, it.x, it.y);
+      if (it.kind === 'gold' && d < 90) { const a = angleTo(it.x, it.y, p.x, p.y); const sp = 260 + (90 - d) * 4; it.x += Math.cos(a) * sp * dt; it.y += Math.sin(a) * sp * dt; }
+      if (d < p.r + 10) {
+        if (it.kind === 'gold') { p.gold += it.amount; this.runStats.gold += it.amount; it.dead = true; this.addText(p.x, p.y - 20, '+' + it.amount + ' зол.', '#ffd54f', 0.9); }
+        else if (it.kind === 'consumable') { p.consumables[it.id]++; it.dead = true; this.addText(p.x, p.y - 20, CONSUMABLES[it.id].name, CONSUMABLES[it.id].color, 0.9); }
+        else if (it.kind === 'item') {
+          if (p.bagFull()) { if (this.bagFullTimer <= 0) { this.message('Сумка полна! Откройте инвентарь (I).'); this.bagFullTimer = 2.5; } }
+          else { p.bag.push(it.item); it.dead = true; this.runStats.items++; this.addText(p.x, p.y - 20, it.item.name, RARITY[it.item.rarity].color, 1); this.message(`Найдено: ${it.item.name}`); }
+        }
+      }
+    }
+    this.pickups = this.pickups.filter((it) => !it.dead);
+  }
+  openChest(c) {
+    c.opened = true;
+    const luck = this.player.meta.dropMult;
+    this.burst(c.x, c.y, '#ffd54f', 20, 120);
+    this.pickups.push(new Pickup(c.x, c.y, 'item', { item: randomItem(this.floor, luck * 1.5) }));
+    this.pickups.push(new Pickup(c.x, c.y, 'gold', { amount: Math.round(R.int(10, 25) * this.floor * this.player.goldMult()) }));
+    if (R.chance(0.6)) this.pickups.push(new Pickup(c.x, c.y, 'consumable', { id: randomConsumable() }));
+    this.message('Сундук открыт!');
+  }
+
+  // ---------- Инвентарь ----------
+  equipItem(item) {
+    const p = this.player;
+    const idx = p.bag.indexOf(item); if (idx < 0) return;
+    p.bag.splice(idx, 1);
+    const old = p.equipment[item.slot];
+    p.equipment[item.slot] = item;
+    if (old) p.bag.push(old);
+    p.hp = Math.min(p.hp, p.maxHp);
+    this.message(`Надето: ${item.name}`);
+  }
+  unequipItem(slot) {
+    const p = this.player, it = p.equipment[slot];
+    if (!it || p.bagFull()) return;
+    p.equipment[slot] = null; p.bag.push(it); p.hp = Math.min(p.hp, p.maxHp);
+  }
+  dropItem(item) {
+    const p = this.player;
+    const idx = p.bag.indexOf(item); if (idx < 0) return;
+    p.bag.splice(idx, 1);
+    this.pickups.push(Object.assign(new Pickup(p.x, p.y, 'item', { item }), { age: -1.5 }));
+  }
+  sellItem(item) {
+    const p = this.player;
+    const idx = p.bag.indexOf(item); if (idx < 0) return;
+    p.bag.splice(idx, 1);
+    const g = Math.round(item.price * 0.4); p.gold += g;
+    this.message(`Продано: ${item.name} за ${g} зол.`);
+  }
+  buy(entry) {
+    const p = this.player;
+    if (p.gold < entry.price) { this.message('Не хватает золота.'); return false; }
+    if (entry.kind === 'item') {
+      if (p.bagFull()) { this.message('Сумка полна.'); return false; }
+      p.gold -= entry.price; p.bag.push(entry.item); entry.sold = true;
+    } else {
+      if (entry.qty <= 0) return false;
+      p.gold -= entry.price; p.consumables[entry.id]++; entry.qty--;
+    }
+    return true;
+  }
+
+  // ---------- Мир и эффекты ----------
+  updateWorld(dt) {
+    this.transition = Math.max(0, this.transition - dt);
+    if (this.banner) { this.banner.time -= dt; if (this.banner.time <= 0) this.banner = null; }
+  }
+  updateEffects(dt) {
+    this.shake = Math.max(0, this.shake - dt * 30);
+    this.flash = Math.max(0, this.flash - dt * 2);
+    for (const pt of this.particles) { pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vx *= 0.92; pt.vy *= 0.92; }
+    this.particles = this.particles.filter((pt) => pt.life > 0);
+    for (const t of this.texts) { t.life -= dt; t.y -= 28 * dt; }
+    this.texts = this.texts.filter((t) => t.life > 0);
+    for (const ef of this.effects) ef.time -= dt;
+    this.effects = this.effects.filter((ef) => ef.time > 0);
+    for (const m of this.messages) m.life -= dt;
+    this.messages = this.messages.filter((m) => m.life > 0);
+  }
+  burst(x, y, color, n, speed = 90) {
+    for (let i = 0; i < n; i++) {
+      const a = R.float(0, 6.28), s = R.float(speed * 0.3, speed);
+      this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: R.float(0.25, 0.6), max: 0.6, color, size: R.float(2, 4) });
+    }
+  }
+  addText(x, y, text, color, scale = 1) { this.texts.push({ x, y, text, color, life: 0.9, scale }); }
+  message(text) { this.messages.push({ text, life: 5 }); if (this.messages.length > 5) this.messages.shift(); }
+}
+
+// ---- js/main.js ----
+// Точка входа: создаём игру и запускаем цикл.
+
+function startGame() {
+  const canvas = document.getElementById('game');
+  const game = new Game(canvas);
+  window.game = game;
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    game.update(dt);
+    game.renderer.render();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', startGame);
+else startGame();
+
+</script>
+</body>
+</html>
