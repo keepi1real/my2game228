@@ -137,6 +137,18 @@ function wallTiles() {
 // Маска соседей. За границей карты сосед считается стеной: map.get отдаёт там T_WALL.
 // Колонны в маску не входят — это отдельные стоящие посреди комнаты объекты,
 // и учитывать их как стену значило бы лепить на соседние стены лишние стыки.
+// Стену в глубине монолита рисовать незачем — её ниоткуда не видно.
+// Видимой считаем ту, у которой хотя бы один из восьми соседей не стена и не колонна.
+function wallVisible(map, x, y) {
+  for (let oy = -1; oy <= 1; oy++) {
+    for (let ox = -1; ox <= 1; ox++) {
+      const n = map.get(x + ox, y + oy);
+      if (n !== T_WALL && n !== T_PILLAR) return true;
+    }
+  }
+  return false;
+}
+
 function wallMask(map, x, y) {
   return (map.get(x, y - 1) === T_WALL ? 1 : 0)
     + (map.get(x + 1, y) === T_WALL ? 2 : 0)
@@ -303,12 +315,14 @@ function bakeFloorLayer(map) {
   canvas.height = map.h * TILE;
   const ctx = canvas.getContext('2d');
 
-  // 1. Базовый камень — только под проходимыми тайлами и колоннами,
-  //    иначе текстура вылезет наружу там, где должна быть сплошная скала.
+  // 1. Базовый камень — под проходимыми тайлами, колоннами и видимыми стенами.
+  //    Под стенами он нужен потому, что у плитки прозрачный верхний край: без пола
+  //    там просвечивал бы фон и вдоль стен шла бы чёрная полоса. В глубину скалы
+  //    камень не кладём — оттуда он вылез бы наружу там, где должен быть монолит.
   ctx.fillStyle = ctx.createPattern(BASE_TILE, 'repeat');
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
-      if (map.tiles[map.idx(x, y)] !== T_WALL) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      if (map.tiles[map.idx(x, y)] !== T_WALL || wallVisible(map, x, y)) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
 
@@ -327,15 +341,7 @@ function bakeFloorLayer(map) {
     for (let x = 0; x < map.w; x++) {
       const t = map.tiles[map.idx(x, y)], px = x * TILE, py = y * TILE;
       if (t === T_WALL) {
-        // Стены в глубине скалы не рисуем — их всё равно не видно.
-        let nearFloor = false;
-        for (let oy = -1; oy <= 1 && !nearFloor; oy++) {
-          for (let ox = -1; ox <= 1; ox++) {
-            const n = map.get(x + ox, y + oy);
-            if (n !== T_WALL && n !== T_PILLAR) { nearFloor = true; break; }
-          }
-        }
-        if (!nearFloor) continue;
+        if (!wallVisible(map, x, y)) continue;
         if (walls) {
           ctx.drawImage(walls[wallMask(map, x, y)], px, py);
         } else {
