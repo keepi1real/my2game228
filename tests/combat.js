@@ -129,6 +129,37 @@ withPage({}, async ({ page, errors }) => {
     out.killer = g.runStats.killer || null;
     out.shooterName = shooter.def.name;
 
+    // ---------- Автоприцел разворачивается на цель ровно позади ----------
+    // Прицел раньше доводился смешиванием координат, и ровно на 180° это
+    // вырождалось: разность лежала на той же прямой, нормализация возвращала
+    // исходный вектор, прицел не поворачивался никогда. Проверяем худший угол.
+    g.startRun('faelas', 'startNone'); quiet();
+    g.input.touch.enabled = true;              // прицел ведёт игра, а не мышь
+    g.enemies.length = 0;
+    const pa = g.player;
+    // Ставим врага на видимый проходимый тайл, иначе автоприцел его не увидит.
+    let tgt = null;
+    for (let rr = 2; rr <= 5 && !tgt; rr++) {
+      for (let dy = -rr; dy <= rr && !tgt; dy++) for (let dx = -rr; dx <= rr; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== rr) continue;
+        const tx = Math.floor(pa.x / TILE) + dx, ty = Math.floor(pa.y / TILE) + dy;
+        if (!g.map.inBounds(tx, ty) || !g.map.isWalkable(tx, ty)) continue;
+        if (!g.map.visible[g.map.idx(tx, ty)]) continue;
+        tgt = { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 }; break;
+      }
+    }
+    out.foundAimTarget = !!tgt;
+    if (tgt) {
+      const foe = new Enemy('goblin', tgt.x, tgt.y, 1);
+      foe.speed = 0;                           // стоит на месте: угол не должен уплывать
+      g.enemies.push(foe);
+      const w = { x: tgt.x - pa.x, y: tgt.y - pa.y };
+      const wl = Math.hypot(w.x, w.y);
+      pa.aim.x = -w.x / wl; pa.aim.y = -w.y / wl;   // ровно 180°, худший случай
+      step(40);
+      out.aimBehindDot = (pa.aim.x * w.x + pa.aim.y * w.y) / wl;
+    }
+
     // ---------- Лут босса: пул не пустеет ни на одном этаже ----------
     out.emptyBossPools = [];
     for (let f = 1; f <= MAX_FLOOR; f++) {
@@ -185,6 +216,9 @@ withPage({}, async ({ page, errors }) => {
   check(r.goldMagnetWorks === true, 'магнит золота работает в чистом поле');
 
   check(r.killer === r.shooterName, `смерть от стрелы называет стрелка («${r.killer}»)`);
+
+  check(r.foundAimTarget, 'нашлась видимая цель для проверки прицела');
+  check(r.aimBehindDot > 0.99, `прицел разворачивается на цель ровно позади (совпадение ${r.aimBehindDot !== undefined ? r.aimBehindDot.toFixed(3) : 'нет'})`);
 
   check(r.emptyBossPools.length === 0, `пул лута босса не пуст ни на одном этаже (пустые: ${r.emptyBossPools.join(',') || 'нет'})`);
 

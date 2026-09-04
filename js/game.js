@@ -176,10 +176,13 @@ class Game {
     if (inp.touchMode) {
       const want = inp.touch.aimVector() || autoAimDir(this, p) || (ml > 0 ? { x: mx / ml, y: my / ml } : null);
       if (want) {
-        const k = Math.min(1, dt * AIM_SMOOTH);
-        p.aim.x += (want.x - p.aim.x) * k; p.aim.y += (want.y - p.aim.y) * k;
-        const al = Math.hypot(p.aim.x, p.aim.y) || 1;
-        p.aim.x /= al; p.aim.y /= al;
+        // Доводим прицел поворотом, а не смешиванием координат. Покомпонентная
+        // интерполяция вырождается: когда цель ровно позади, разность лежит на
+        // той же прямой, нормализация возвращает исходный вектор — и прицел не
+        // разворачивается вообще. Рядом со 180° он по той же причине еле полз.
+        const a = Math.atan2(p.aim.y, p.aim.x);
+        const na = a + angleDiff(a, Math.atan2(want.y, want.x)) * Math.min(1, dt * AIM_SMOOTH);
+        p.aim.x = Math.cos(na); p.aim.y = Math.sin(na);
       }
     } else {
       const wx = inp.mouse.x + this.camera.x, wy = inp.mouse.y + this.camera.y;

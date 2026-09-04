@@ -97,7 +97,7 @@ withPage({
   // Врага ставим не на фиксированное смещение, а на ближайший видимый проходимый
   // тайл: на слепом смещении гоблин попадал в стену, автоприцел его не видел
   // и проверка падала через раз в зависимости от того, как лёг этаж.
-  const aim = await page.evaluate(async () => {
+  const aim = await page.evaluate(() => {
     const p = game.player, map = game.map;
     const px = Math.floor(p.x / TILE), py = Math.floor(p.y / TILE);
     let spot = null;
@@ -113,11 +113,16 @@ withPage({
     }
     if (!spot) return null;
     game.enemies.length = 0;                       // чужие враги увели бы прицел
-    game.enemies.push(new Enemy('goblin', spot.x, spot.y, 1));
+    const gob = new Enemy('goblin', spot.x, spot.y, 1);
+    gob.speed = 0;                                 // гоблин должен стоять, см. ниже
+    game.enemies.push(gob);
     const want = { x: spot.x - p.x, y: spot.y - p.y };
     const l = Math.hypot(want.x, want.y);
     p.aim.x = -want.x / l; p.aim.y = -want.y / l;  // изначально смотрим ровно назад
-    await new Promise((r) => setTimeout(r, 600));
+    // Кадры крутим сами, а не ждём по часам. Через setTimeout проверка падала
+    // примерно раз в пять прогонов: за 600 мс живой гоблин успевал обойти игрока,
+    // прицел честно вёл его на новом месте, а сверялись со старым направлением.
+    for (let i = 0; i < 40; i++) game.update(1 / 60);
     return { dot: (p.aim.x * want.x + p.aim.y * want.y) / l };
   });
   check(aim && aim.dot > 0.9, `автоприцел развернулся на врага (совпадение ${aim ? aim.dot.toFixed(2) : 'нет места'})`);
