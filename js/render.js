@@ -95,13 +95,48 @@ class Renderer {
         }
       }
       // Лестница рисуется каждый кадр: её вид меняется, пока босс жив.
-      if (t === T_STAIRS) {
-        ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
-        ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
-        ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(g.stairsOpen ? '>' : '×', px + TILE / 2, py + TILE / 2 + 1);
-      }
+      if (t === T_STAIRS) this.drawStairs(px, py, g.stairsOpen);
       if (!map.visible[i]) { ctx.fillStyle = COLORS.fog; ctx.fillRect(px, py, TILE, TILE); }
+    }
+  }
+  // Лестница на следующий этаж. Ступени уходят вверх и вглубь: ближняя широкая
+  // и тёмная, дальние уже и светлее. Не в запечённом слое, потому что вид
+  // зависит от stairsOpen, а тот меняется по ходу боя с боссом.
+  drawStairs(px, py, open) {
+    const ctx = this.ctx, STEPS = 5;
+    const pad = 2, h = (TILE - pad * 2) / STEPS;
+
+    // Проём под лестницей и боковые щёки, в которые врезаны ступени.
+    ctx.fillStyle = '#0c0c12';
+    ctx.fillRect(px + pad, py + pad, TILE - pad * 2, TILE - pad * 2);
+
+    for (let i = 0; i < STEPS; i++) {
+      const k = i / (STEPS - 1);                 // 0 — ближняя ступень, 1 — самая дальняя
+      const inset = pad + 1 + k * 5;             // дальние ступени уже: перспектива
+      const y = py + TILE - pad - (i + 1) * h;
+      const w = TILE - inset * 2;
+      // Дальние ступени светлее — на них падает свет с верхнего этажа.
+      const v = Math.round((open ? 62 : 44) + k * (open ? 52 : 24));
+      ctx.fillStyle = `rgb(${v},${Math.round(v * 0.95)},${Math.round(v * 0.82)})`;
+      ctx.fillRect(px + inset, y, w, h - 0.8);
+      // Кромка подступенка: именно она читается как ребро ступени.
+      ctx.fillStyle = open ? 'rgba(212,169,74,0.5)' : 'rgba(150,152,164,0.22)';
+      ctx.fillRect(px + inset, y, w, 1.2);
+    }
+
+    if (open) {
+      // Тёплый отсвет сверху — подсказка, что проход открыт.
+      const grad = ctx.createLinearGradient(0, py, 0, py + TILE);
+      grad.addColorStop(0, 'rgba(212,169,74,0.30)');
+      grad.addColorStop(1, 'rgba(212,169,74,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(px + pad, py + pad, TILE - pad * 2, TILE - pad * 2);
+    } else {
+      // Проход закрыт, пока жив босс: поперёк лестницы лежит брус.
+      ctx.fillStyle = '#6d4c41';
+      ctx.fillRect(px + 3, py + TILE / 2 - 2, TILE - 6, 4);
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(px + 3, py + TILE / 2 - 2, TILE - 6, 1.5);
     }
   }
   drawTorches() {
