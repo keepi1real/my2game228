@@ -441,24 +441,9 @@ function drawEntityArt(ctx, group, id, ent, radius, color, time) {
   return false;
 }
 
-// ---------- Главное меню: полоса пяти героев ----------
+// В главном меню портреты не показываем: там и так фон, а ряд лиц его перегружает.
+// Герои со своим артом встречают игрока на экране выбора.
 if (typeof UI !== 'undefined') {
-  const baseShowMenu = UI.prototype.showMenu;
-  UI.prototype.showMenu = function showMenuWithArt() {
-    baseShowMenu.call(this);
-    const panel = this.root.querySelector('.panel');
-    const subtitle = panel && panel.querySelector('.subtitle');
-    if (!panel || !subtitle || panel.querySelector('.menu-hero-strip')) return;
-    const strip = document.createElement('div');
-    strip.className = 'menu-hero-strip';
-    strip.innerHTML = HEROES.map((h) => `
-      <div class="menu-hero-mini" title="${h.name} — ${h.title}">
-        <img src="${artPath('heroes', h.id)}" alt="${h.name}" draggable="false">
-        <span>${h.name}</span>
-      </div>`).join('');
-    subtitle.insertAdjacentElement('afterend', strip);
-  };
-
   // ---------- Выбор героя: карточки + крупный портрет ----------
   const baseRenderHeroSelect = UI.prototype.renderHeroSelect;
   UI.prototype.renderHeroSelect = function renderHeroSelectWithArt() {

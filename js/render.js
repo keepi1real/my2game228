@@ -218,8 +218,6 @@ class Renderer {
       ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
     }
     if (swing && bladeInFront) this.drawSwingBlade(p, swing);
-    // Указатель прицела.
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * (p.r + 9), p.y + p.aim.y * (p.r + 9)); ctx.stroke();
     ctx.restore();
     const top = this.bodyTop('heroes', hero.id, p, p.r);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '11px sans-serif';

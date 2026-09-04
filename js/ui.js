@@ -153,7 +153,13 @@ class UI {
       </div></div>`);
     this.bind('[data-a=resume]', 'click', () => { this.g.state = 'run'; this.hide(); });
     this.bind('[data-a=help]', 'click', () => this.showHelp(() => this.showPause()));
-    this.bind('[data-a=abandon]', 'click', () => { if (confirm('Прервать поход? Найденные предметы и золото пропадут.')) this.g.playerDie('малодушие'); });
+    this.bind('[data-a=abandon]', 'click', () => {
+      if (!confirm('Прервать поход? Найденные предметы и золото пропадут.')) return;
+      // playerDie срабатывает только в состоянии 'run', а из паузы мы приходим в 'paused',
+      // и без этой строки кнопка молча ничего не делала.
+      this.g.state = 'run';
+      this.g.playerDie('малодушие');
+    });
   }
 
   // ---------- Инвентарь ----------
