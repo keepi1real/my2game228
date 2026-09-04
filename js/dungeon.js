@@ -1,7 +1,7 @@
 'use strict';
 // Генерация этажей: комнаты + коридоры, арены боссов, туман войны.
 
-const T_WALL = 0, T_FLOOR = 1, T_STAIRS = 2, T_PILLAR = 3;
+const T_WALL = 0, T_FLOOR = 1, T_STAIRS = 2, T_PILLAR = 3, T_CHASM = 4;
 
 class GameMap {
   constructor(w, h) {
@@ -17,7 +17,9 @@ class GameMap {
   inBounds(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
   get(x, y) { return this.inBounds(x, y) ? this.tiles[this.idx(x, y)] : T_WALL; }
   set(x, y, t) { if (this.inBounds(x, y)) this.tiles[this.idx(x, y)] = t; }
-  isWall(x, y) { const t = this.get(x, y); return t === T_WALL || t === T_PILLAR; }
+  isWall(x, y) { const t = this.get(x, y); return t === T_WALL || t === T_PILLAR || t === T_CHASM; }
+  // Через пропасть видно, поэтому проверка обзора отличается от проверки прохода.
+  blocksSight(x, y) { const t = this.get(x, y); return t === T_WALL || t === T_PILLAR; }
   isWalkable(x, y) { return !this.isWall(x, y); }
   // Проверка круга (в пикселях) на столкновение со стенами.
   circleBlocked(px, py, r) {
@@ -77,8 +79,9 @@ function rectsOverlap(a, b, pad) {
 // Возвращает { map, spawn, stairs, enemies:[{type,x,y}], chests:[{x,y}], merchant:{x,y}|null, boss:{id,x,y}|null }
 function generateFloor(floor, seed) {
   const rng = new RNG(seed);
-  const isBoss = BOSS_FLOORS.includes(floor);
-  return isBoss ? generateBossArena(floor, rng) : generateRooms(floor, rng);
+  if (BOSS_FLOORS.includes(floor)) return generateBossArena(floor, rng);
+  if (floor === HALL_FLOOR) return generateGreatHall(floor, rng);
+  return generateRooms(floor, rng);
 }
 
 function generateRooms(floor, rng) {
@@ -182,6 +185,89 @@ function generateBossArena(floor, rng) {
   return { map, spawn, stairs, enemies: [], chests: [], merchant: null, boss: { id: bossId, x: (r.cx + 4) * TILE, y: (r.cy + 0.5) * TILE } };
 }
 
+
+// ---------- Железные Чертоги ----------
+// Рукотворный этаж вместо процедурного: колонный зал гномов, пропасть поперёк пути
+// и узкий мост через неё, а за ним усыпальница. Расстановка колонн строгая, рядами —
+// именно регулярность отличает чертог от пещеры.
+function generateGreatHall(floor, rng) {
+  const W = 60, H = 40;
+  const map = new GameMap(W, H);
+  const fill = (x0, y0, x1, y1, t) => {
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) map.set(x, y, t);
+  };
+
+  const ENTRY = { x: 4, y: 16, w: 11, h: 9 };
+  const HALL = { x: 19, y: 7, w: 22, h: 27 };
+  const CHASM = { x0: 41, x1: 46, y0: 7, y1: 33 };
+  const BRIDGE_Y = [19, 20];
+  const GALLERY = { x: 47, y: 18, w: 10, h: 14 };
+  const TOMB = { x: 48, y: 8, w: 8, h: 8 };
+
+  fill(ENTRY.x, ENTRY.y, ENTRY.x + ENTRY.w - 1, ENTRY.y + ENTRY.h - 1, T_FLOOR);
+  fill(15, 19, 19, 21, T_FLOOR);                                  // проход в зал
+  fill(HALL.x, HALL.y, HALL.x + HALL.w - 1, HALL.y + HALL.h - 1, T_FLOOR);
+  fill(CHASM.x0, CHASM.y0, CHASM.x1, CHASM.y1, T_CHASM);
+  for (const y of BRIDGE_Y) fill(CHASM.x0, y, CHASM.x1, y, T_FLOOR);  // мост
+  fill(GALLERY.x, GALLERY.y, GALLERY.x + GALLERY.w - 1, GALLERY.y + GALLERY.h - 1, T_FLOOR);
+  fill(TOMB.x, TOMB.y, TOMB.x + TOMB.w - 1, TOMB.y + TOMB.h - 1, T_FLOOR);
+  fill(51, 16, 52, 18, T_FLOOR);                                  // спуск в усыпальницу
+
+  // Колонны строгой сеткой — это и делает зал чертогом, а не пещерой.
+  const COLS = [23, 27, 32, 36], ROWS = [10, 14, 18, 22, 26, 30];
+  for (const x of COLS) for (const y of ROWS) map.set(x, y, T_PILLAR);
+
+  map.rooms = [
+    { x: ENTRY.x, y: ENTRY.y, w: ENTRY.w, h: ENTRY.h, cx: ENTRY.x + 5, cy: ENTRY.y + 4 },
+    { x: HALL.x, y: HALL.y, w: HALL.w, h: HALL.h, cx: HALL.x + 11, cy: HALL.y + 13 },
+    { x: GALLERY.x, y: GALLERY.y, w: GALLERY.w, h: GALLERY.h, cx: GALLERY.x + 5, cy: GALLERY.y + 7 },
+    { x: TOMB.x, y: TOMB.y, w: TOMB.w, h: TOMB.h, cx: TOMB.x + 4, cy: TOMB.y + 4 },
+  ];
+
+  const stairs = { tx: 53, ty: 28 };
+  map.set(stairs.tx, stairs.ty, T_STAIRS);
+
+  // Факелы у колонн и вдоль моста — чертоги гномов не были тёмными.
+  map.torches = [];
+  const torch = (tx, ty) => map.torches.push({ x: (tx + 0.5) * TILE, y: ty * TILE + 4, phase: rng.float(0, 6.28) });
+  for (const x of COLS) for (const y of ROWS) if (rng.chance(0.55)) torch(x, y);
+  for (const y of [BRIDGE_Y[0] - 1, BRIDGE_Y[1] + 1]) { torch(CHASM.x0 - 1, y); torch(CHASM.x1 + 1, y); }
+  torch(TOMB.x + 4, TOMB.y + 1);
+  torch(ENTRY.x + 5, ENTRY.y + 1);
+
+  // Обитатели: зал захвачен гоблинами, в глубине сидит тролль.
+  // Орка сюда не берём: у него нет спрайта, и красный квадрат рядом со всеми остальными выбивается.
+  const pool = ['goblin', 'goblin', 'goblin', 'archer', 'bat'];
+  const enemies = [];
+  const spot = (room) => randomFloorInRoom(map, room, rng);
+  for (let i = 0; i < 14; i++) {
+    const pos = spot(map.rooms[1]);
+    if (pos) enemies.push({ type: rng.pick(pool), x: pos.x, y: pos.y });
+  }
+  for (let i = 0; i < 5; i++) {
+    const pos = spot(map.rooms[2]);
+    if (pos) enemies.push({ type: rng.pick(['goblin', 'archer', 'uruk']), x: pos.x, y: pos.y });
+  }
+  const trollAt = spot(map.rooms[2]);
+  if (trollAt) enemies.push({ type: 'troll', x: trollAt.x, y: trollAt.y });
+
+  // Сундук в усыпальнице — то, за чем сюда вообще спускаются.
+  const chests = [];
+  const tombChest = { x: (TOMB.x + 4 + 0.5) * TILE, y: (TOMB.y + 4 + 0.5) * TILE };
+  chests.push(tombChest);
+  const hallChest = spot(map.rooms[1]);
+  if (hallChest) chests.push(hallChest);
+
+  return {
+    map,
+    spawn: { x: (ENTRY.x + 2.5) * TILE, y: (ENTRY.y + 4.5) * TILE },
+    stairs: { x: (stairs.tx + 0.5) * TILE, y: (stairs.ty + 0.5) * TILE },
+    enemies, chests, merchant: null, boss: null,
+    title: 'Железные Чертоги',
+    subtitle: 'Здесь ещё помнят молот и наковальню',
+  };
+}
+
 function carveCorridor(map, a, b, rng) {
   let x = a.cx, y = a.cy;
   const horizontalFirst = rng.chance(0.5);
@@ -207,4 +293,4 @@ function placeTorches(map, rng) {
   }
 }
 
-if (typeof module !== 'undefined') module.exports = { GameMap, generateFloor, T_WALL, T_FLOOR, T_STAIRS, T_PILLAR };
+if (typeof module !== 'undefined') module.exports = { GameMap, generateFloor, T_WALL, T_FLOOR, T_STAIRS, T_PILLAR, T_CHASM };

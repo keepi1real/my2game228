@@ -14,7 +14,7 @@ for (const f of ['utils', 'data', 'save', 'dungeon', 'entities']) {
 }
 
 // Верхнеуровневые const/class из скриптов не попадают в объект контекста — вытаскиваем их выражением.
-const NAMES = ['HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS'];
+const NAMES = ['HALL_FLOOR', 'T_CHASM', 'generateGreatHall', 'HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS'];
 Object.assign(ctx, vm.runInContext('({' + NAMES.join(',') + '})', ctx));
 
 let failed = 0;
@@ -92,6 +92,58 @@ for (let floor = 1; floor <= ctx.MAX_FLOOR; floor++) {
   }
 }
 check(totalEnemies > 0, 'враги генерируются');
+
+// --- Железные Чертоги: рукотворный этаж ---
+{
+  const gen = ctx.generateFloor(ctx.HALL_FLOOR, 12345);
+  const map = gen.map;
+  check(gen.title === 'Железные Чертоги', 'у чертога есть название');
+  check(!gen.merchant && !gen.boss, 'в чертоге нет торговца и босса');
+
+  let chasm = 0;
+  for (let i = 0; i < map.tiles.length; i++) if (map.tiles[i] === ctx.T_CHASM) chasm++;
+  check(chasm > 100, `пропасть прорублена (тайлов: ${chasm})`);
+
+  // Через пропасть должно быть видно, иначе мост становится слепым.
+  const cx = map.w >> 1;
+  let sawChasm = false;
+  for (let y = 0; y < map.h && !sawChasm; y++) {
+    for (let x = 0; x < map.w; x++) {
+      if (map.tiles[map.idx(x, y)] !== ctx.T_CHASM) continue;
+      check(map.isWall(x, y), 'пропасть не пройти');
+      check(!map.blocksSight(x, y), 'через пропасть видно');
+      sawChasm = true;
+      break;
+    }
+  }
+
+  // Усыпальница и зал — оба с сундуком, и оба достижимы.
+  const stx = Math.floor(gen.stairs.x / ctx.TILE), sty = Math.floor(gen.stairs.y / ctx.TILE);
+  const field = map.flowField(stx, sty);
+  const spx = Math.floor(gen.spawn.x / ctx.TILE), spy = Math.floor(gen.spawn.y / ctx.TILE);
+  check(field[map.idx(spx, spy)] >= 0, 'от входа есть путь к лестнице');
+  check(gen.chests.length >= 1, 'в чертоге есть сундук');
+  for (const c of gen.chests) {
+    const tx = Math.floor(c.x / ctx.TILE), ty = Math.floor(c.y / ctx.TILE);
+    check(field[map.idx(tx, ty)] >= 0, 'сундук достижим');
+  }
+
+  // Мост — единственная переправа: замуровав его, лестницу достать нельзя.
+  const blocked = ctx.generateFloor(ctx.HALL_FLOOR, 12345).map;
+  for (let y = 0; y < blocked.h; y++) {
+    for (let x = 0; x < blocked.w; x++) {
+      // Пол внутри полосы пропасти и есть мост.
+      if (blocked.tiles[blocked.idx(x, y)] !== ctx.T_CHASM) continue;
+      for (const by of [y - 1, y + 1]) {
+        if (blocked.get(x, by) === 1) blocked.set(x, by, ctx.T_CHASM);
+      }
+    }
+  }
+  const blockedField = blocked.flowField(stx, sty);
+  check(blockedField[blocked.idx(spx, spy)] < 0, 'без моста лестница недостижима');
+}
+
+
 
 if (failed) { console.error(`\n${failed} проверок провалено`); process.exit(1); }
 console.log('Все проверки пройдены.');

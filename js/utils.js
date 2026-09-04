@@ -64,7 +64,7 @@ function lineOfSight(map, x0, y0, x1, y1) {
   let x = x0, y = y0;
   for (let i = 0; i < 200; i++) {
     if (x === x1 && y === y1) return true;
-    if (!(x === x0 && y === y0) && map.isWall(x, y)) return false;
+    if (!(x === x0 && y === y0) && map.blocksSight(x, y)) return false;
     const e2 = 2 * err;
     if (e2 >= dy) { err += dy; x += sx; }
     if (e2 <= dx) { err += dx; y += sy; }

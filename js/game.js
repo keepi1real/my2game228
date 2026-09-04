@@ -93,7 +93,11 @@ class Game {
     this.map.updateVisibility(Math.floor(p.x / TILE), Math.floor(p.y / TILE), 9);
     this.flow = null; this.flowTimer = 0;
     this.camera.x = p.x - VIEW_W / 2; this.camera.y = p.y - VIEW_H / 2;
-    this.banner = { text: gen.boss ? 'Логово босса' : `Этаж ${n}`, sub: gen.boss ? BOSSES[gen.boss.id].name : (n === 1 ? 'Найдите лестницу вниз' : ''), time: 2.6 };
+    this.banner = {
+      text: gen.title || (gen.boss ? 'Логово босса' : `Этаж ${n}`),
+      sub: gen.subtitle || (gen.boss ? BOSSES[gen.boss.id].name : (n === 1 ? 'Найдите лестницу вниз' : '')),
+      time: gen.title ? 3.4 : 2.6,
+    };
     this.transition = 0.6;
     Save.save();
   }

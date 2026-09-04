@@ -3,7 +3,7 @@
 
 const COLORS = {
   floor: '#24242f', floorAlt: '#20202a', wall: '#3a3a4e', wallTop: '#4a4a62', wallEdge: '#2a2a3a', pillar: '#55556e',
-  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', unseen: '#07070b', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
+  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', unseen: '#07070b', chasm: '#04040a', chasmEdge: '#1a1a26', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
 };
 
 function drawShape(ctx, shape, x, y, r, color, angle = 0) {
@@ -85,6 +85,9 @@ class Renderer {
           ctx.fillStyle = COLORS.floor; ctx.fillRect(px, py, TILE, TILE);
           ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
           ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
+        } else if (t === T_CHASM) {
+          ctx.fillStyle = COLORS.chasm; ctx.fillRect(px, py, TILE, TILE);
+          if (map.get(x, y - 1) !== T_CHASM) { ctx.fillStyle = COLORS.chasmEdge; ctx.fillRect(px, py, TILE, 5); }
         } else {
           ctx.fillStyle = ((x + y) & 1) ? COLORS.floor : COLORS.floorAlt; ctx.fillRect(px, py, TILE, TILE);
         }
@@ -401,7 +404,7 @@ class Renderer {
       if (!map.explored[i]) continue;
       const t = map.tiles[i];
       if (t === T_WALL) continue;
-      ctx.fillStyle = t === T_STAIRS ? '#d4a94a' : (map.visible[i] ? '#4a4a62' : '#2e2e40');
+      ctx.fillStyle = t === T_STAIRS ? '#d4a94a' : t === T_CHASM ? '#101018' : (map.visible[i] ? '#4a4a62' : '#2e2e40');
       ctx.fillRect(x0 + x * scale, y0 + y * scale, scale, scale);
     }
     if (g.merchant) { ctx.fillStyle = '#6fc3df'; ctx.fillRect(x0 + Math.floor(g.merchant.x / TILE) * scale - 1, y0 + Math.floor(g.merchant.y / TILE) * scale - 1, scale + 2, scale + 2); }

@@ -5,6 +5,7 @@ const GAME_TITLE = 'Тени Подгорья';
 const MAX_FLOOR = 10;
 const BOSS_FLOORS = [5, 10];
 const MERCHANT_FLOORS = [3, 7];
+const HALL_FLOOR = 6;          // рукотворный этаж: Железные Чертоги
 const MAX_LEVEL = 40;
 const BAG_SIZE = 12;
 
@@ -249,5 +250,5 @@ const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
 function upgradeCost(u, rank) { return u.baseCost + u.costStep * rank; }
 
 if (typeof module !== 'undefined') {
-  module.exports = { HEROES, HERO_BY_ID, SKILLS, MONSTERS, BOSSES, RARITY, ITEM_BASES, ITEM_BASE_BY_ID, AFFIXES, CONSUMABLES, START_ITEMS, UPGRADES, UPGRADE_BY_ID, upgradeCost, xpToNext, MAX_FLOOR, BOSS_FLOORS, MERCHANT_FLOORS, BAG_SIZE };
+  module.exports = { HALL_FLOOR, HEROES, HERO_BY_ID, SKILLS, MONSTERS, BOSSES, RARITY, ITEM_BASES, ITEM_BASE_BY_ID, AFFIXES, CONSUMABLES, START_ITEMS, UPGRADES, UPGRADE_BY_ID, upgradeCost, xpToNext, MAX_FLOOR, BOSS_FLOORS, MERCHANT_FLOORS, BAG_SIZE };
 }

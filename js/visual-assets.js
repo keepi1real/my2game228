@@ -281,7 +281,8 @@ function bakeFloorLayer(map) {
   ctx.fillStyle = ctx.createPattern(BASE_TILE, 'repeat');
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
-      if (map.tiles[map.idx(x, y)] !== T_WALL) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+      const t = map.tiles[map.idx(x, y)];
+      if (t !== T_WALL && t !== T_CHASM) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
 
@@ -310,6 +311,10 @@ function bakeFloorLayer(map) {
         ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
         ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
         if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+      } else if (t === T_CHASM) {
+        // Провал: чернота и светлая кромка там, где к нему выходит пол.
+        ctx.fillStyle = COLORS.chasm; ctx.fillRect(px, py, TILE, TILE);
+        if (map.get(x, y - 1) !== T_CHASM) { ctx.fillStyle = COLORS.chasmEdge; ctx.fillRect(px, py, TILE, 5); }
       } else if (t === T_PILLAR) {
         ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
         ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
