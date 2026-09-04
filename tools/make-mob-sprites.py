@@ -17,9 +17,11 @@ from collections import Counter
 CANVAS = 256
 FOOT_MARGIN = 7
 
-def _kill_border_regions(im, match, min_share):
+def _kill_border_regions(im, match, min_share, structure=None):
     """Гасит альфу там, где match связан с краем кадра и достаточно велик."""
-    lab, cnt = ndimage.label(match, structure=np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]]))
+    if structure is None:
+        structure = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
+    lab, cnt = ndimage.label(match, structure=structure)
     if cnt == 0:
         return im
     border = set(lab[0].tolist()) | set(lab[-1].tolist()) | set(lab[:, 0].tolist()) | set(lab[:, -1].tolist())
@@ -66,6 +68,17 @@ def drop_checker(im, tol=11, min_bucket_share=0.2, min_share=0.004):
     for b in picked:
         match |= (sat <= 14) & (np.abs(lum - (b * 10 + 5)) <= tol)
     return _kill_border_regions(im, match, min_share)
+
+
+def drop_white_blocks(im, lum_min=112, sat_max=28, min_share=0.003):
+    """Убирает почти белые блоки-ошмётки у края кадра — их оставляет вырезание,
+    и над головой персонажа висит светлое облако. Правило «плоской заливки» их не
+    ловит: блоки с резкими границами дают высокий локальный разброс. Считаем связность
+    по восьми соседям, чтобы блоки, соприкасающиеся углами, слиплись в одну область."""
+    arr = np.asarray(im).astype(int)
+    rgb, a = arr[..., :3], arr[..., 3]
+    white = (a > 40) & (rgb.mean(2) > lum_min) & ((rgb.max(2) - rgb.min(2)) < sat_max)
+    return _kill_border_regions(im, white, min_share, structure=np.ones((3, 3)))
 
 
 def clean_alpha(im, floor=30):
@@ -126,7 +139,7 @@ def fit(im):
     return out
 
 def build(path):
-    return fit(debleed(drop_junk(clean_alpha(drop_checker(drop_flat_background(Image.open(path).convert('RGBA')))))))
+    return fit(debleed(drop_junk(clean_alpha(drop_white_blocks(drop_checker(drop_flat_background(Image.open(path).convert('RGBA'))))))))
 
 def anchor_y(im):
     return round(im.split()[3].getbbox()[3] / im.height, 3)

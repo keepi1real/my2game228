@@ -91,10 +91,19 @@ class Renderer {
       }
       // Лестница рисуется каждый кадр: её вид меняется, пока босс жив.
       if (t === T_STAIRS) {
-        ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
-        ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
-        ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(g.stairsOpen ? '>' : '×', px + TILE / 2, py + TILE / 2 + 1);
+        // Пока босс жив, спуск закрыт: гасим картинку и оставляем крест поверх.
+        const cx = px + TILE / 2, cy = py + TILE / 2;
+        const drawn = typeof drawProp === 'function'
+          && drawProp(ctx, 'stairs', cx, cy, { alpha: g.stairsOpen ? 1 : 0.4 });
+        if (!drawn) {
+          ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
+          ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+          ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(g.stairsOpen ? '>' : '×', cx, cy + 1);
+        } else if (!g.stairsOpen) {
+          ctx.fillStyle = '#e05a4a'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('×', cx, cy + 1);
+        }
       }
       if (!map.visible[i]) { ctx.fillStyle = COLORS.fog; ctx.fillRect(px, py, TILE, TILE); }
     }
@@ -127,9 +136,13 @@ class Renderer {
   drawMerchant() {
     const m = this.g.merchant, ctx = this.ctx;
     if (!m || !this.g.map.explored[this.g.map.idx(Math.floor(m.x / TILE), Math.floor(m.y / TILE))]) return;
-    ctx.fillStyle = '#1f3a44'; ctx.beginPath(); ctx.roundRect(m.x - 22, m.y + 10, 44, 10, 3); ctx.fill();
-    drawShape(ctx, 'circle', m.x, m.y, 13, COLORS.merchant);
-    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', m.x, m.y + 1);
+    const pw = typeof propWidth === 'function' ? propWidth('merchant') : null;
+    this.drawShadow(m.x, m.y, pw || 30);
+    if (!(typeof drawProp === 'function' && drawProp(ctx, 'merchant', m.x, m.y))) {
+      ctx.fillStyle = '#1f3a44'; ctx.beginPath(); ctx.roundRect(m.x - 22, m.y + 10, 44, 10, 3); ctx.fill();
+      drawShape(ctx, 'circle', m.x, m.y, 13, COLORS.merchant);
+      ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', m.x, m.y + 1);
+    }
     const d = dist(m.x, m.y, this.g.player.x, this.g.player.y);
     ctx.fillStyle = '#e6e2d3'; ctx.font = '12px sans-serif'; ctx.fillText(d < 60 ? '[E] Торговать' : 'Торговец', m.x, m.y - 22);
   }

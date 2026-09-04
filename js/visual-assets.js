@@ -45,10 +45,13 @@ const SPRITES = {
   },
   enemies: {
     goblin: { src: 'assets/sprites/goblin.webp', anchorY: 0.973, height: 48 },
+    bat: { src: 'assets/sprites/bat.webp', anchorY: 0.973, height: 34 },
     archer: { src: 'assets/sprites/archer.webp', anchorY: 0.973, height: 46 },
     warg: { src: 'assets/sprites/warg.webp', anchorY: 0.973, height: 42 },
     spider: { src: 'assets/sprites/spider.webp', anchorY: 0.973, height: 36 },
     troll: { src: 'assets/sprites/troll.webp', anchorY: 0.973, height: 88 },
+    spawn: { src: 'assets/sprites/spawn.webp', anchorY: 0.973, height: 50 },
+    golem: { src: 'assets/sprites/golem.webp', anchorY: 0.973, height: 76 },
     uruk: { src: 'assets/sprites/uruk.webp', anchorY: 0.973, height: 60 },
     wraith: { src: 'assets/sprites/wraith.webp', anchorY: 0.973, height: 50 },
   },
@@ -56,6 +59,14 @@ const SPRITES = {
   bosses: {
     grazgot: { src: 'assets/sprites/grazgot.webp', anchorY: 0.973, height: 110 },
   },
+};
+
+// ---------- Реквизит ----------
+// Торговец рисуется как существо — стоит ступнями на координате.
+// Лестница лежит плашмя на тайле, поэтому центрируется, а не ставится на ноги.
+const PROPS = {
+    merchant: { src: 'assets/props/merchant.webp', anchorY: 0.973, height: 54 },
+    stairs: { src: 'assets/props/stairs.webp', anchorY: 0.973, height: 42, flat: true },
 };
 
 // Ориентиры высот на экране при тайле 32 px: герой 48, мелкий монстр 40, тролль 72, босс 110.
@@ -87,7 +98,7 @@ function loadArt(kind, group, id, def) {
 }
 
 function preloadGameArt() {
-  for (const [kind, table] of [['portrait', PORTRAITS], ['sprite', SPRITES]]) {
+  for (const [kind, table] of [['portrait', PORTRAITS], ['sprite', SPRITES], ['prop', { props: PROPS }]]) {
     for (const group of Object.keys(table)) {
       for (const [id, def] of Object.entries(table[group])) loadArt(kind, group, id, def);
     }
@@ -306,6 +317,30 @@ function bakeFloorLayer(map) {
     }
   }
   return canvas;
+}
+
+// ---------- Реквизит ----------
+// Ширина реквизита на экране, чтобы render.js знал, какой ширины класть тень.
+function propWidth(id) {
+  const def = PROPS[id];
+  const img = def && artImage('prop', 'props', id);
+  return def && ready(img) ? img.naturalWidth * (def.height / img.naturalHeight) : null;
+}
+
+// Рисует реквизит. flat означает «лежит на полу» — тогда картинка центрируется на точке,
+// а не ставится на неё ступнями. Возвращает false, если арта нет и рисовать должен render.js.
+function drawProp(ctx, id, x, y, opts = {}) {
+  const def = PROPS[id];
+  const img = def && artImage('prop', 'props', id);
+  if (!def || !ready(img)) return false;
+  const h = def.height;
+  const w = img.naturalWidth * (h / img.naturalHeight);
+  ctx.save();
+  if (opts.alpha != null) ctx.globalAlpha *= opts.alpha;
+  const top = def.flat ? y - h / 2 : y - h * (def.anchorY == null ? DEFAULT_ANCHOR_Y : def.anchorY);
+  ctx.drawImage(img, x - w / 2, top, w, h);
+  ctx.restore();
+  return true;
 }
 
 // ---------- Точки расширения, которые вызывает render.js ----------
