@@ -21,17 +21,25 @@ node tools/server.js
 Второй способ — выложить игру на статический хостинг с HTTPS. Репозиторий
 публичный, поэтому GitHub Pages бесплатны и настраиваются в три клика:
 
-В репозитории лежит `.github/workflows/pages.yml`: он собирает папку для
-раздачи и выкладывает её сам, а `configure-pages` с `enablement: true` включает
-Pages без захода в настройки. Через минуту после пуша игра будет на
-`https://keepi1real.github.io/my2game228/`.
+Pages придётся включить один раз руками — **из workflow это невозможно**.
+Пробовали: `actions/configure-pages` с `enablement: true` получает от GitHub
+«Create Pages site failed: Resource not accessible by integration», у токена
+Actions нет права создавать сайт.
 
-Если выкладка не проходит из-за ограничений окружения `github-pages` (по
-умолчанию оно пускает только ветку по умолчанию), включите Pages вручную:
-**Settings → Pages → Source: Deploy from a branch → Branch:
-`claude/lotr-2d-game-dev-gatk6f`, папка `/ (root)` → Save.** Собирать при этом
-ничего не нужно: `index.html` лежит в корне, а все пути в коде относительные —
-раздача из подпапки проверена, service worker получает scope `/my2game228/`.
+Один клик, дальше всё само:
+
+**Settings → Pages → Source: `GitHub Actions` → Save.**
+
+После этого `.github/workflows/pages.yml` на каждый пуш в ветку прогоняет
+`tests/run.js`, собирает папку через `make-webdir.js --pwa` и выкладывает её на
+`https://keepi1real.github.io/my2game228/`. На страницу идёт только игра —
+`tests`, `tools` и `.git` туда не попадают.
+
+Вариант без workflow: **Source: `Deploy from a branch` → Branch:
+`claude/lotr-2d-game-dev-gatk6f`, папка `/ (root)`.** Тогда публикуется весь
+репозиторий как есть; собирать всё равно ничего не нужно, потому что
+`index.html` лежит в корне, а пути в коде относительные — раздача из подпапки
+проверена, service worker получает scope `/my2game228/`.
 
 Тогда Chrome предложит «Установить приложение», и игра появится на рабочем
 столе отдельной иконкой, без адресной строки и с работой без сети.
