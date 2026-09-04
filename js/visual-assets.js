@@ -68,6 +68,12 @@ const FLOOR_TILES = {
   ],
 };
 
+// ---------- Тайлсет стен ----------
+// Лист 4x4 из 16 плиток по 64x64. Индекс плитки — битовая маска соседей-стен:
+//   m = сверху*1 + справа*2 + снизу*4 + слева*8
+// Позиция в листе: sx = (m % 4) * 64, sy = (m >> 2) * 64.
+const WALL_TILES = { src: 'assets/tiles/wall_tileset.webp', size: 64, cols: 4 };
+
 // ---------- Загрузка ----------
 const GAME_ART = new Map();
 const artKey = (kind, group, id) => `${kind}:${group}:${id}`;
@@ -99,7 +105,44 @@ function loadImage(src) {
 
 const BASE_TILE = loadImage(FLOOR_TILES.base);
 const PATCH_TILES = FLOOR_TILES.patches.map(loadImage);
-const tilesReady = () => ready(BASE_TILE) && PATCH_TILES.every(ready);
+const WALL_SHEET = loadImage(WALL_TILES.src);
+const tilesReady = () => ready(BASE_TILE) && PATCH_TILES.every(ready) && ready(WALL_SHEET);
+
+// Плитки стен режем из листа один раз за загрузку в отдельные холсты размером с тайл карты.
+// Зачем именно так: плитка в листе 64 px, а клетка карты TILE = 32, то есть при рисовании
+// прямо из листа масштаб был бы 0.5, и интерполяция затягивала бы в края пиксели соседних
+// плиток — на стыках стен появились бы швы. Копия каждой плитки в свой холст 1:1 отрезает
+// её от соседей, а уменьшение делается один раз внутри изолированного холста.
+let WALL_TILE_CACHE = null;
+function wallTiles() {
+  if (WALL_TILE_CACHE) return WALL_TILE_CACHE;
+  if (!ready(WALL_SHEET)) return null;
+  const { size, cols } = WALL_TILES;
+  WALL_TILE_CACHE = [];
+  for (let m = 0; m < 16; m++) {
+    const cut = document.createElement('canvas');
+    cut.width = cut.height = size;
+    cut.getContext('2d').drawImage(WALL_SHEET, (m % cols) * size, Math.floor(m / cols) * size, size, size, 0, 0, size, size);
+
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = TILE;
+    const t = tile.getContext('2d');
+    t.imageSmoothingQuality = 'high';
+    t.drawImage(cut, 0, 0, size, size, 0, 0, TILE, TILE);
+    WALL_TILE_CACHE.push(tile);
+  }
+  return WALL_TILE_CACHE;
+}
+
+// Маска соседей. За границей карты сосед считается стеной: map.get отдаёт там T_WALL.
+// Колонны в маску не входят — это отдельные стоящие посреди комнаты объекты,
+// и учитывать их как стену значило бы лепить на соседние стены лишние стыки.
+function wallMask(map, x, y) {
+  return (map.get(x, y - 1) === T_WALL ? 1 : 0)
+    + (map.get(x + 1, y) === T_WALL ? 2 : 0)
+    + (map.get(x, y + 1) === T_WALL ? 4 : 0)
+    + (map.get(x - 1, y) === T_WALL ? 8 : 0);
+}
 
 // Подключить спрайт на ходу: достаточно положить файл и вызвать это с id из js/data.js.
 function registerSprite(group, id, def) {
@@ -278,6 +321,8 @@ function bakeFloorLayer(map) {
   ctx.globalCompositeOperation = 'source-over';
 
   // 3. Стены и колонны поверх пола.
+  // Координаты целочисленные (px, py кратны TILE) и плитка кладётся 1:1 — швов не будет.
+  const walls = wallTiles();
   for (let y = 0; y < map.h; y++) {
     for (let x = 0; x < map.w; x++) {
       const t = map.tiles[map.idx(x, y)], px = x * TILE, py = y * TILE;
@@ -291,9 +336,13 @@ function bakeFloorLayer(map) {
           }
         }
         if (!nearFloor) continue;
-        ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
-        ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
-        if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+        if (walls) {
+          ctx.drawImage(walls[wallMask(map, x, y)], px, py);
+        } else {
+          ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
+          if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+        }
       } else if (t === T_PILLAR) {
         ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
         ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
