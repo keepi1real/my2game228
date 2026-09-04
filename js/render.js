@@ -173,8 +173,14 @@ class Renderer {
       const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
       let color = def.color;
       if (e.hitFlash > 0) color = '#ffffff';
-      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
-      if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
+      // Ореол и замах: у геометрической фигуры это её же силуэт, а у спрайта —
+      // пятно на полу под ногами, иначе позади стоящего существа висит цветная коробка.
+      const marker = (radius, color) => {
+        if (spriteW) { ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(e.x, e.y, radius * 1.15, radius * 0.5, 0, 0, Math.PI * 2); ctx.fill(); }
+        else drawShape(ctx, def.shape, e.x, e.y, radius, color, angle);
+      };
+      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; marker(e.r + 4 + k * 6, '#ff5252'); ctx.restore(); }
+      if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; marker(e.r + 10, e.phase === 2 ? '#ff1744' : def.color); ctx.restore(); }
       if (!this.drawArt(group, artId, e, e.r, color)) {
         drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
         ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

@@ -45,12 +45,17 @@ const SPRITES = {
   },
   enemies: {
     goblin: { src: 'assets/sprites/goblin.webp', anchorY: 0.973, height: 48 },
+    archer: { src: 'assets/sprites/archer.webp', anchorY: 0.973, height: 46 },
     warg: { src: 'assets/sprites/warg.webp', anchorY: 0.973, height: 42 },
-    spider: { src: 'assets/sprites/spider.webp', anchorY: 0.965, height: 36 },
+    spider: { src: 'assets/sprites/spider.webp', anchorY: 0.973, height: 36 },
     troll: { src: 'assets/sprites/troll.webp', anchorY: 0.973, height: 88 },
+    uruk: { src: 'assets/sprites/uruk.webp', anchorY: 0.973, height: 60 },
+    wraith: { src: 'assets/sprites/wraith.webp', anchorY: 0.973, height: 50 },
   },
-  // Гразготу и Моргулу арт пока не сделан — они остаются на геометрическом рендере.
-  bosses: {},
+  // Моргулу арт пока не сделан — он остаётся на геометрическом рендере.
+  bosses: {
+    grazgot: { src: 'assets/sprites/grazgot.webp', anchorY: 0.973, height: 110 },
+  },
 };
 
 // Ориентиры высот на экране при тайле 32 px: герой 48, мелкий монстр 40, тролль 72, босс 110.
