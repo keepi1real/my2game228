@@ -53,10 +53,6 @@ const fmt = (n) => (Math.abs(n) >= 1000 ? Math.round(n).toLocaleString('ru-RU') 
 const pct = (n) => Math.round(n * 100) + '%';
 const sign = (n) => (n > 0 ? '+' : '') + n;
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 // Бресенхем для проверки видимости между тайлами.
 function lineOfSight(map, x0, y0, x1, y1) {
   let dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);

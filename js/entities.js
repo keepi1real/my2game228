@@ -107,26 +107,24 @@ class Enemy {
     this.hp = this.maxHp;
     this.dmg = def.dmg * (this.isBoss ? 1 : dscale);
     this.speed = def.speed; this.armor = def.armor || 0;
-    this.state = 'idle'; this.target = null;
+    this.state = 'idle';
     this.wander = { x: 0, y: 0, t: 0 };
     this.attackTimer = R.float(0, def.attackCd);
     this.windup = 0; this.windupDir = { x: 0, y: 0 };
     this.stun = 0; this.slow = 0; this.poisonDps = 0; this.poisonTime = 0;
     this.kx = 0; this.ky = 0; // отбрасывание
     this.hitFlash = 0; this.alive = true;
-    this.flowTimer = R.float(0, 0.3);
     this.dir = { x: 0, y: 0 };
     this.abilityTimers = {};
     if (def.abilities) for (const k in def.abilities) this.abilityTimers[k] = def.abilities[k] * 0.6;
     this.charge = null; this.phase = 1;
     this.telegraph = null; // {x,y,r,time,total,type}
-    this.stuckTimer = 0; this.lastX = x; this.lastY = y;
   }
 }
 
 class Projectile {
   constructor(o) {
-    Object.assign(this, { pierce: 0, size: 4, color: '#fff', life: 1.5, explode: 0, stun: 0, slow: 0, crit: false, spin: false, poison: 0, hit: new Set(), angle: 0 }, o);
+    Object.assign(this, { pierce: 0, size: 4, color: '#fff', life: 1.5, explode: 0, stun: 0, slow: 0, crit: false, spin: false, source: null, hit: new Set(), angle: 0 }, o);
     this.angle = Math.atan2(this.vy, this.vx);
   }
 }

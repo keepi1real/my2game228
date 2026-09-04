@@ -122,7 +122,7 @@ const SKILLS = {
   vanish: {
     name: 'Тихие шаги', icon: '☾', cooldown: 16,
     desc: 'Невидимость на 4 с: враги теряют вас, следующий удар наносит 300% урона.',
-    use(g, p) { p.addBuff('invisible', 1, 4); p.sneak = true; g.enemies.forEach((e) => { e.target = null; e.state = 'idle'; }); g.addText(p.x, p.y - 20, 'Тень', '#b0bec5'); },
+    use(g, p) { p.addBuff('invisible', 1, 4); p.sneak = true; g.enemies.forEach((e) => { e.state = 'idle'; }); g.addText(p.x, p.y - 20, 'Тень', '#b0bec5'); },
   },
   stone: {
     name: 'Меткий камень', icon: '●', cooldown: 6,

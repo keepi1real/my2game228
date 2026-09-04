@@ -36,7 +36,7 @@ class Game {
     Save.load();
     this.renderer = new Renderer(this);
     this.ui = new UI(this);
-    this.time = 0; this.msgCooldown = 0;
+    this.time = 0;
     this.resetRunState();
     this.ui.showMenu();
   }
@@ -142,6 +142,7 @@ class Game {
       if (inp.hit('Escape') || inp.hit('KeyE')) { this.state = 'run'; this.ui.hide(); }
     }
     this.updateEffects(dt);
+    Save.tick(dt);
     inp.endFrame();
   }
 
@@ -302,7 +303,7 @@ class Game {
     dmg = Math.max(1, dmg - e.armor);
     dmg = Math.round(dmg);
     e.hp -= dmg; e.hitFlash = 0.12;
-    if (e.state === 'idle') { e.state = 'chase'; e.target = p; e.memory = 4; }
+    if (e.state === 'idle') { e.state = 'chase'; e.memory = 4; }
     this.addText(e.x + R.float(-10, 10), e.y - e.r - 6, String(dmg) + (crit ? '!' : ''), crit ? '#ffd54f' : '#ffffff', crit ? 1.3 : 1);
     if (opts.knockback && !e.isBoss) { const a = angleTo(p.x, p.y, e.x, e.y); e.kx += Math.cos(a) * opts.knockback; e.ky += Math.sin(a) * opts.knockback; }
     if (opts.stun && !e.isBoss) e.stun = Math.max(e.stun, opts.stun);
@@ -373,7 +374,7 @@ class Game {
       if (R.chance(dropChance)) this.pickups.push(new Pickup(e.x, e.y, 'item', { item: randomItem(this.floor, luck) }));
       if (R.chance(0.10 * luck)) this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: randomConsumable() }));
     }
-    Save.save();
+    Save.mark();
   }
 
   // ---------- Враги ----------
@@ -470,7 +471,7 @@ class Game {
     const d = dist(p.x, p.y, e.x, e.y);
     if (def.ranged) {
       const a = angleTo(e.x, e.y, p.x, p.y);
-      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
+      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', source: e, size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
     } else {
       this.effects.push({ type: 'slash', x: e.x, y: e.y, angle: Math.atan2(e.windupDir.y, e.windupDir.x), r: def.attackRange + 6, time: 0.15, color: def.color });
       if (d <= def.attackRange + p.r + 10) {
@@ -492,7 +493,7 @@ class Game {
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, 'goblin', 3); return false; }
     } else if (e.def.id === 'morgul') {
       if (e.abilityTimers.blink <= 0 && d > 160) { e.abilityTimers.blink = ab.blink; this.blinkBoss(e); return false; }
-      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
+      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', source: e, size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
       if (e.abilityTimers.scream <= 0 && d < 220) { e.abilityTimers.scream = ab.scream; e.telegraph = { type: 'circle', x: e.x, y: e.y, r: 210, time: 0.8, total: 0.8, dmgMult: 0.9, slow: 3 }; return true; }
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, e.phase === 2 ? 'shadow' : 'wraith', 2); return false; }
     }
@@ -562,7 +563,7 @@ class Game {
           }
         } else if (dist(pr.x, pr.y, p.x, p.y) < p.r + pr.size) {
           pr.dead = true;
-          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
+          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, pr.source); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
           break;
         }
       }

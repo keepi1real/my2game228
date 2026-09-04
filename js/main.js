@@ -14,6 +14,8 @@ function startGame() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+  // Отложенная запись прогресса не должна пропасть, если вкладку закрыли между тиками.
+  window.addEventListener('pagehide', () => Save.flush());
 }
 if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', startGame);
 else startGame();

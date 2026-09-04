@@ -2,6 +2,7 @@
 // Постоянный прогресс между забегами (localStorage).
 
 const SAVE_KEY = 'shadows-undermountain-save-v1';
+const WRITE_EVERY = 2; // секунд между отложенными записями прогресса
 
 function defaultSave() {
   const heroes = {};
@@ -19,6 +20,11 @@ function defaultSave() {
 
 const Save = {
   data: null,
+  // Запись в localStorage синхронная: JSON.stringify всего сейва на каждом убийстве
+  // подтормаживал бой. Частые изменения помечаются mark(), а на диск уходят раз в
+  // WRITE_EVERY секунд из игрового цикла. Всё, после чего прогресс терять нельзя
+  // (конец этажа, конец забега, закрытие вкладки), вызывает save() напрямую.
+  dirty: false, sinceWrite: 0,
   load() {
     let d = null;
     try {
@@ -34,8 +40,13 @@ const Save = {
     return d;
   },
   save() {
+    this.dirty = false; this.sinceWrite = 0;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* приватный режим и т.п. */ }
   },
+  // Отложенная запись: данные изменились, но ждать кадра-другого не страшно.
+  mark() { this.dirty = true; },
+  tick(dt) { if (!this.dirty) return; this.sinceWrite += dt; if (this.sinceWrite >= WRITE_EVERY) this.save(); },
+  flush() { if (this.dirty) this.save(); },
   reset() { this.data = defaultSave(); this.save(); },
   hero(id) { return this.data.heroes[id]; },
   rank(upId) { return this.data.upgrades[upId] || 0; },
