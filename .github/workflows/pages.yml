@@ -4,7 +4,11 @@
 # Сам workflow этого сделать не может — пробовали с configure-pages
 # (enablement: true), GitHub отвечает «Create Pages site failed: Resource not
 # accessible by integration»: у токена Actions нет права создавать сайт.
-# После включения этот workflow выкладывает игру на каждый пуш в ветку.
+#
+# Выкладка идёт с main. Окружение github-pages по умолчанию пускает только ветку
+# по умолчанию: запуск с рабочей ветки GitHub отклонял за две секунды, не начав
+# ни одного шага. Рабочая ветка оставлена в триггере намеренно — если её однажды
+# разрешат в настройках окружения, предпросмотр заработает сам собой.
 #
 # Выкладываем не корень репозитория, а собранную папку: в корне лежат tests,
 # tools и .git, которым на странице делать нечего. Флаг --pwa оставляет
@@ -13,7 +17,7 @@ name: Pages
 
 on:
   push:
-    branches: [claude/lotr-2d-game-dev-gatk6f]
+    branches: [main, claude/lotr-2d-game-dev-gatk6f]
   workflow_dispatch:
 
 permissions:
