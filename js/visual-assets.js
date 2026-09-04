@@ -74,6 +74,52 @@ const FLOOR_TILES = {
 // Позиция в листе: sx = (m % 4) * 64, sy = (m >> 2) * 64.
 const WALL_TILES = { src: 'assets/tiles/wall_tileset.webp', size: 64, cols: 4 };
 
+// ---------- Оружие ближнего боя ----------
+// Чем герой машет. Рисуется вдоль оси X от рукояти к острию, длина приходит от рендера,
+// поворот и положение кисти он же и задаёт. Ключи — id из js/data.js; кого тут нет,
+// тот бьёт без оружия (лучники и маг вообще не машут — у них другой тип атаки).
+const MELEE_WEAPONS = {
+  arator: { kind: 'sword', blade: '#b9c4d4', guard: '#c9b27a', grip: '#3b2a18', width: 3.4, guardH: 6 },
+  baldin: { kind: 'axe', blade: '#cdd6e2', guard: '#8a6a3a', grip: '#4a3620', width: 3.0, guardH: 5, head: 9 },
+  peregrin: { kind: 'dagger', blade: '#d8dde6', guard: '#b8a06a', grip: '#33291a', width: 2.6, guardH: 4 },
+};
+const meleeWeapon = (id) => MELEE_WEAPONS[id] || null;
+
+// Клинок в локальных координатах: рукоять около нуля, остриё на расстоянии len.
+function drawMeleeWeapon(ctx, id, len) {
+  const w = meleeWeapon(id);
+  if (!w) return false;
+  const bw = w.width, grip = 8;
+
+  ctx.fillStyle = w.grip;
+  ctx.fillRect(-grip - 3, -1.8, grip, 3.6);
+  ctx.fillStyle = w.guard;
+  ctx.beginPath(); ctx.arc(-grip - 3, 0, 2.2, 0, Math.PI * 2); ctx.fill();      // навершие
+  ctx.fillRect(-1.5, -w.guardH / 2, 3, w.guardH);                              // гарда
+
+  ctx.fillStyle = w.blade;
+  if (w.kind === 'axe') {
+    // Топор: голое древко и широкое лезвие у самого конца.
+    ctx.fillStyle = w.grip; ctx.fillRect(0, -1.6, len - w.head, 3.2);
+    ctx.fillStyle = w.blade;
+    ctx.beginPath();
+    ctx.moveTo(len - w.head, -2);
+    ctx.quadraticCurveTo(len - 1, -w.head, len, -w.head * 0.35);
+    ctx.lineTo(len, w.head * 0.35);
+    ctx.quadraticCurveTo(len - 1, w.head, len - w.head, 2);
+    ctx.closePath(); ctx.fill();
+  } else {
+    // Меч и кинжал: полоса, сужающаяся к острию.
+    ctx.beginPath();
+    ctx.moveTo(1.5, -bw); ctx.lineTo(len - 7, -bw * 0.65); ctx.lineTo(len, 0);
+    ctx.lineTo(len - 7, bw * 0.65); ctx.lineTo(1.5, bw);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';                                    // блик по долу
+    ctx.fillRect(4, -0.7, len - 12, 1.2);
+  }
+  return true;
+}
+
 // ---------- Загрузка ----------
 const GAME_ART = new Map();
 const artKey = (kind, group, id) => `${kind}:${group}:${id}`;
@@ -174,7 +220,9 @@ const artPath = (group, id) => { const d = portraitDef(group, id); return d && d
 function motionOf(group, ent, time) {
   if (ent.artSeed === undefined) ent.artSeed = R.float(0, Math.PI * 2);
   let facing, moving, attackK, flash, stunned;
+  let aimX = 0, aimY = 0;
   if (group === 'heroes') {
+    aimX = ent.aim.x; aimY = ent.aim.y;
     facing = ent.aim.x >= 0 ? 1 : -1;
     moving = !!ent.dash || Math.abs(ent.vx) + Math.abs(ent.vy) > 0.01;
     attackK = ent.recoil / RECOIL_TIME;
@@ -189,7 +237,7 @@ function motionOf(group, ent, time) {
     stunned = ent.stun > 0;
   }
   return {
-    facing, moving, stunned, time, seed: ent.artSeed,
+    facing, moving, stunned, time, seed: ent.artSeed, aimX, aimY,
     attackK: clamp(attackK, 0, 1),
     flash: clamp(flash, 0, 1),
   };
@@ -225,12 +273,17 @@ function drawSprite(ctx, img, def, ent, m) {
   const breath = m.moving ? 0 : Math.sin(m.time * 2 + m.seed) * 0.012;
   const wobble = m.stunned ? Math.sin(m.time * 22 + m.seed) * 0.08 : 0;
   const punch = m.attackK;
+  // Выпад в сторону удара: тело коротко уходит вперёд и мягко возвращается.
+  // По вертикали смещение меньше — вид сверху под углом, глубина сжата.
+  const lunge = punch * punch;
 
   const baseAlpha = ctx.globalAlpha;
   ctx.save();
-  ctx.translate(ent.x, ent.y + bob);
+  ctx.translate(ent.x + m.aimX * lunge * 6, ent.y + bob + m.aimY * lunge * 3.5);
   if (m.facing < 0 && def.flip !== false) ctx.scale(-1, 1);
-  ctx.rotate(lean + wobble + punch * 0.14);
+  // Разворот корпуса в удар. После зеркалирования поворот тоже зеркалится,
+  // поэтому знак задавать не нужно — тело само доворачивается в нужную сторону.
+  ctx.rotate(lean + wobble + punch * 0.24);
   ctx.scale(1 + punch * 0.10 + breath, 1 - punch * 0.07 + breath);
   ctx.drawImage(img, -w / 2, -feet, w, h);
   if (m.flash > 0) {

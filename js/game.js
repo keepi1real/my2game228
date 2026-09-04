@@ -235,7 +235,7 @@ class Game {
     if (p.sneak) { mult = 3; p.sneak = false; p.buffs = p.buffs.filter((b) => b.stat !== 'invisible'); this.addText(p.x, p.y - 24, 'Удар из тени!', '#b0bec5'); }
     if (atk.type === 'melee') {
       const a = Math.atan2(p.aim.y, p.aim.x);
-      p.swing = 0.14; p.swingAngle = a; p.swingRange = atk.range; p.swingArc = atk.arc;
+      p.swing = SWING_TIME; p.swingAngle = a; p.swingRange = atk.range; p.swingArc = atk.arc;
       let hitAny = false;
       for (const e of this.enemies) {
         if (!e.alive) continue;

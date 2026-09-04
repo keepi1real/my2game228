@@ -6,6 +6,11 @@ const COLORS = {
   stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', unseen: '#07070b', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
 };
 
+// Сжатие дуги взмаха по вертикали. Вид сверху под углом: движение идёт в плоскости
+// пола, поэтому окружность на экране должна быть эллипсом, иначе удар вверх и вниз
+// выглядит длиннее, чем вбок.
+const SWING_SQUASH = 0.62;
+
 function drawShape(ctx, shape, x, y, r, color, angle = 0) {
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -195,14 +200,12 @@ class Renderer {
     const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
     const spriteW = this.spriteWidth('heroes', hero.id);
     this.drawShadow(p.x, spriteW ? p.y : p.y + 10, spriteW || 32);
-    // Взмах.
-    if (p.swing > 0) {
-      const k = p.swing / 0.14;
-      ctx.save(); ctx.globalAlpha = 0.6 * k; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.stroke();
-      ctx.globalAlpha = 0.18 * k; ctx.fillStyle = hero.color; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.closePath(); ctx.fill();
-      ctx.restore();
-    }
+    // Взмах: сначала след, он всегда позади бойца.
+    const swing = this.swingState(p);
+    if (swing) this.drawSwingTrail(p, swing);
+    // Клинок за спиной рисуется до фигуры, перед грудью — после неё.
+    const bladeInFront = !!swing && Math.sin(swing.angle) > -0.25;
+    if (swing && !bladeInFront) this.drawSwingBlade(p, swing);
     if (p.shield > 0) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#c77dff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
     ctx.save();
     if (p.isInvisible()) ctx.globalAlpha = 0.4;
@@ -214,6 +217,7 @@ class Renderer {
       ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
     }
+    if (swing && bladeInFront) this.drawSwingBlade(p, swing);
     // Указатель прицела.
     ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * (p.r + 9), p.y + p.aim.y * (p.r + 9)); ctx.stroke();
     ctx.restore();
@@ -238,6 +242,46 @@ class Renderer {
   }
   drawArt(group, id, ent, radius, color) {
     return typeof drawEntityArt === 'function' && drawEntityArt(this.ctx, group, id, ent, radius, color, this.g.time);
+  }
+  // Высота кисти над ступнями — примерно середина груди. У геометрического
+  // фолбэка спрайта нет, там за высоту берётся радиус фигуры.
+  handHeight(group, id, radius) {
+    const h = typeof artSpriteHeight === 'function' ? artSpriteHeight(group, id) : null;
+    return h ? h * 0.55 : radius;
+  }
+  // Состояние взмаха: клинок проходит дугу рывком в начале и мягко доводится к концу.
+  // Урон наносится мгновенно в момент удара, эта кривая — чистая анимация.
+  swingState(p) {
+    if (p.swing <= 0) return null;
+    const t = clamp(1 - p.swing / SWING_TIME, 0, 1);
+    const from = p.swingAngle - p.swingArc / 2;
+    return { from, angle: from + p.swingArc * (1 - Math.pow(1 - t, 2.6)), range: p.swingRange, fade: 1 - t };
+  }
+  // Система координат взмаха: центр — кисть, вертикаль сжата, чтобы дуга читалась
+  // как движение в плоскости пола, а не как ровная окружность на экране.
+  swingSpace(p) {
+    const ctx = this.ctx;
+    ctx.translate(p.x, p.y - this.handHeight('heroes', this.g.hero.id, p.r));
+    ctx.scale(1, SWING_SQUASH);
+  }
+  // След клинка: сектор от начала дуги до текущего положения, а не вся дуга сразу.
+  drawSwingTrail(p, s) {
+    const ctx = this.ctx;
+    ctx.save();
+    this.swingSpace(p);
+    ctx.globalAlpha = 0.22 * s.fade; ctx.fillStyle = this.g.hero.color;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, s.range, s.from, s.angle); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.8 * s.fade; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, s.range, s.from, s.angle); ctx.stroke();
+    ctx.restore();
+  }
+  drawSwingBlade(p, s) {
+    const ctx = this.ctx;
+    ctx.save();
+    this.swingSpace(p);
+    ctx.rotate(s.angle);
+    if (typeof drawMeleeWeapon === 'function') drawMeleeWeapon(ctx, this.g.hero.id, s.range * 0.9);
+    ctx.restore();
   }
   drawShadow(x, y, width) {
     const ctx = this.ctx;
