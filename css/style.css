@@ -85,6 +85,20 @@ kbd {
   border-radius: 4px; padding: 1px 6px; font-size: 12px; color: #fff;
 }
 
+/* Фон экранов вне забега: меню, выбор героя, лагерь.
+   Затемняющий градиент идёт первым слоем — в background-image слои
+   накладываются сверху вниз, поэтому он ложится поверх картинки.
+   .overlay выше задаёт background сокращённой записью, которая обнуляет
+   background-image, так что это правило должно идти после него.
+   Если файла нет, картинка просто не загрузится и останется градиент. */
+.overlay-front {
+  background-image:
+    linear-gradient(rgba(10, 12, 16, 0.55), rgba(10, 12, 16, 0.8)),
+    url('../assets/ui/menu_bg.webp');
+  background-size: cover;
+  background-position: center;
+}
+
 /* Hero select */
 .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .hero-card {

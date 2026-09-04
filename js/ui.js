@@ -11,7 +11,7 @@ class UI {
   showMenu() {
     const d = Save.data, st = d.stats;
     this.render(`
-      <div class="overlay"><div class="panel" style="min-width:520px">
+      <div class="overlay overlay-front"><div class="panel" style="min-width:520px">
         <h1>${GAME_TITLE}</h1>
         <div class="subtitle">Rogue-like о героях, спускающихся во тьму под горами</div>
         <div class="menu-buttons">
@@ -79,7 +79,7 @@ class UI {
         <b>${s.name}</b><div class="muted">${s.desc}</div>${unlocked ? '' : `<div class="shards" style="margin-top:4px">🔒 ${s.cost} ◆ — открыть в лагере</div>`}</div>`;
     }).join('');
     this.render(`
-      <div class="overlay"><div class="panel" style="min-width:860px">
+      <div class="overlay overlay-front"><div class="panel" style="min-width:860px">
         <div class="row between"><h2 style="margin:0">Выбор героя</h2><span class="shards">◆ ${d.shards}</span></div>
         <div class="hero-grid" style="margin-top:12px">${cards}</div>
         <div class="hero-detail">
@@ -126,7 +126,7 @@ class UI {
       }).join('')}</div>`;
     }
     this.render(`
-      <div class="overlay"><div class="panel" style="min-width:640px">
+      <div class="overlay overlay-front"><div class="panel" style="min-width:640px">
         <div class="row between"><h2 style="margin:0">Лагерь</h2><span class="shards">◆ ${d.shards}</span></div>
         <div class="muted" style="margin:6px 0 12px">Осколки мифрила добываются из монстров и боссов. Улучшения действуют на всех героев навсегда.</div>
         <div class="tabs"><div class="tab ${tab === 'upgrades' ? 'active' : ''}" data-tab="upgrades">Улучшения</div><div class="tab ${tab === 'items' ? 'active' : ''}" data-tab="items">Стартовые предметы</div></div>
