@@ -6,12 +6,16 @@ class UI {
   hide() { this.root.innerHTML = ''; }
   render(html) { this.root.innerHTML = html; }
   bind(selector, evt, fn) { this.root.querySelectorAll(selector).forEach((el) => el.addEventListener(evt, (e) => fn(el, e))); }
+  // Крестик в углу экрана. Кнопка «Закрыть» лежит в подвале панели, а на телефоне
+  // подвал уезжает за нижний край: инвентарь открывался и не закрывался.
+  // Этот крестик висит на оверлее, который не прокручивается, и виден всегда.
+  closeX() { return '<button class="panel-x" data-a="close" aria-label="Закрыть">\u00d7</button>'; }
 
   // ---------- Главное меню ----------
   showMenu() {
     const d = Save.data, st = d.stats;
     this.render(`
-      <div class="overlay overlay-front"><div class="panel" style="min-width:520px">
+      <div class="overlay overlay-front"><div class="panel" style="--w:520px">
         <h1>${GAME_TITLE}</h1>
         <div class="subtitle">Rogue-like о героях, спускающихся во тьму под горами</div>
         <div class="menu-buttons">
@@ -79,7 +83,7 @@ class UI {
         <b>${s.name}</b><div class="muted">${s.desc}</div>${unlocked ? '' : `<div class="shards" style="margin-top:4px">🔒 ${s.cost} ◆ — открыть в лагере</div>`}</div>`;
     }).join('');
     this.render(`
-      <div class="overlay overlay-front"><div class="panel" style="min-width:860px">
+      <div class="overlay overlay-front"><div class="panel" style="--w:860px">
         <div class="row between"><h2 style="margin:0">Выбор героя</h2><span class="shards">◆ ${d.shards}</span></div>
         <div class="hero-grid" style="margin-top:12px">${cards}</div>
         <div class="hero-detail">
@@ -126,7 +130,7 @@ class UI {
       }).join('')}</div>`;
     }
     this.render(`
-      <div class="overlay overlay-front"><div class="panel" style="min-width:640px">
+      <div class="overlay overlay-front"><div class="panel" style="--w:640px">
         <div class="row between"><h2 style="margin:0">Лагерь</h2><span class="shards">◆ ${d.shards}</span></div>
         <div class="muted" style="margin:6px 0 12px">Осколки мифрила добываются из монстров и боссов. Улучшения действуют на всех героев навсегда.</div>
         <div class="tabs"><div class="tab ${tab === 'upgrades' ? 'active' : ''}" data-tab="upgrades">Улучшения</div><div class="tab ${tab === 'items' ? 'active' : ''}" data-tab="items">Стартовые предметы</div></div>
@@ -194,7 +198,7 @@ class UI {
     }
     const stats = Object.entries(p.statsSummary()).map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
     this.render(`
-      <div class="overlay"><div class="panel inv-panel">
+      <div class="overlay">${this.closeX()}<div class="panel inv-panel">
         <div class="row between"><h2 style="margin:0">Инвентарь</h2><span class="gold">${p.gold} зол.</span></div>
         <div class="inv-layout" style="margin-top:12px">
           <div>
@@ -232,7 +236,7 @@ class UI {
     }).join('');
     const sell = p.bag.length ? p.bag.map((it, i) => `<div class="shop-item">${this.itemHtml(it)}<button class="small" data-sell="${i}">Продать за ${Math.round(it.price * 0.4)}</button></div>`).join('') : '<div class="muted">Сумка пуста.</div>';
     this.render(`
-      <div class="overlay"><div class="panel" style="min-width:820px">
+      <div class="overlay">${this.closeX()}<div class="panel" style="--w:820px">
         <div class="row between"><h2 style="margin:0">Торговец</h2><span class="gold">${p.gold} зол.</span></div>
         <div class="muted" style="margin:4px 0 12px">«Товар редкий, цены честные. Почти.»</div>
         <div class="inv-layout">
@@ -251,7 +255,7 @@ class UI {
     const g = this.g, h = g.hero;
     const mins = Math.floor(rs.time / 60), secs = Math.floor(rs.time % 60);
     this.render(`
-      <div class="overlay"><div class="panel ${victory ? 'banner-win' : 'banner-death'}" style="min-width:520px">
+      <div class="overlay"><div class="panel ${victory ? 'banner-win' : 'banner-death'}" style="--w:520px">
         <h1>${victory ? 'Тень рассеяна!' : 'Герой пал'}</h1>
         <div class="subtitle">${victory ? `${h.name} прошёл все ${MAX_FLOOR} этажей Подгорья.` : `${h.name} погиб на этаже ${g.floor}${rs.killer ? ` (${rs.killer})` : ''}. Уровень сохранён, вещи потеряны.`}</div>
         <div class="result-stats">

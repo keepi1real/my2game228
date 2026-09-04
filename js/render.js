@@ -396,26 +396,33 @@ class Renderer {
       ctx.fillStyle = b.phase === 2 ? '#ff1744' : '#c62828'; ctx.fillRect(x, y + 8, w * clamp(b.hp / b.maxHp, 0, 1), 12);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(b.def.name, VIEW_W / 2, y + 1);
     }
-    // Умения.
-    const skW = 52, gap = 8, total = 3 * skW + 2 * gap + gap + skW;
-    let sx = (VIEW_W - total) / 2, sy = VIEW_H - skW - 16;
-    for (let i = 0; i < 3; i++) {
-      const sk = SKILLS[hero.skills[i]], cd = p.skillCds[i], full = sk.cooldown * (1 - p.cdr());
-      this.drawSkillBox(sx + i * (skW + gap), sy, skW, sk.icon, String(i + 1), cd, full, hero.color, sk.name);
+    const touch = g.input.touchMode;
+    // Умения. На сенсоре нижний ряд не рисуется: те же кнопки переезжают в правый
+    // кластер, куда дотягивается большой палец, — см. drawTouchControls.
+    if (!touch) {
+      const skW = 52, gap = 8, total = 3 * skW + 2 * gap + gap + skW;
+      const sx = (VIEW_W - total) / 2, sy = VIEW_H - skW - 16;
+      for (let i = 0; i < 3; i++) {
+        const sk = SKILLS[hero.skills[i]], cd = p.skillCds[i], full = sk.cooldown * (1 - p.cdr());
+        this.drawSkillBox(sx + i * (skW + gap), sy, skW, sk.icon, String(i + 1), cd, full, hero.color, sk.name);
+      }
+      this.drawSkillBox(sx + 3 * (skW + gap), sy, skW, '⇢', 'Shift', p.dodgeCd, 1.4, '#9a97a8', 'Уклонение');
     }
-    this.drawSkillBox(sx + 3 * (skW + gap), sy, skW, '⇢', 'Shift', p.dodgeCd, 1.4, '#9a97a8', 'Уклонение');
-    // Расходники.
-    const cons = [['potion', 'F'], ['lembas', 'G'], ['fireScroll', 'R'], ['elixir', 'T']];
-    let cx = VIEW_W - 16;
-    for (let i = cons.length - 1; i >= 0; i--) {
-      const [id, key] = cons[i], c = CONSUMABLES[id], n = p.consumables[id];
+    // Расходники. На сенсоре ряд уезжает левее, иначе он ложится под кнопку атаки.
+    let cx = touch ? TOUCH_UI.consX : VIEW_W - 16;
+    const cy = touch ? TOUCH_UI.consY : VIEW_H - 58;
+    const consKeys = ['F', 'G', 'R', 'T'];
+    for (let i = CONSUMABLE_ORDER.length - 1; i >= 0; i--) {
+      const id = CONSUMABLE_ORDER[i], c = CONSUMABLES[id], n = p.consumables[id];
       cx -= 46;
-      ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(cx, VIEW_H - 58, 40, 44, 6); ctx.fill();
+      ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(cx, cy, 40, 44, 6); ctx.fill();
       ctx.globalAlpha = n > 0 ? 1 : 0.3;
-      ctx.fillStyle = c.color; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(c.icon, cx + 20, VIEW_H - 40);
-      ctx.fillStyle = '#e6e2d3'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(`${key} ×${n}`, cx + 20, VIEW_H - 22);
+      ctx.fillStyle = c.color; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(c.icon, cx + 20, cy + 18);
+      ctx.fillStyle = '#e6e2d3'; ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(touch ? `×${n}` : `${consKeys[i]} ×${n}`, cx + 20, cy + 36);
       ctx.globalAlpha = 1;
     }
+    if (touch) this.drawTouchControls();
     // Сообщения.
     ctx.textAlign = 'left'; ctx.font = '13px sans-serif';
     let my = VIEW_H - 16;
@@ -432,10 +439,13 @@ class Renderer {
       if (g.banner.sub) { ctx.fillStyle = '#e6e2d3'; ctx.font = '16px sans-serif'; ctx.fillText(g.banner.sub, VIEW_W / 2, VIEW_H / 2 + 24); }
       ctx.globalAlpha = 1;
     }
-    // Подсказка на первом этаже.
+    // Подсказка на первом этаже — своя для клавиатуры и для пальца.
     if (g.floor === 1 && g.runStats.time < 12) {
       ctx.globalAlpha = clamp(12 - g.runStats.time, 0, 1); ctx.fillStyle = '#9a97a8'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('WASD — движение · ЛКМ / Пробел — атака · 1 2 3 — умения · Shift — уклонение · F — зелье · I — инвентарь · E — торговец', VIEW_W / 2, VIEW_H - 112);
+      ctx.fillText(touch
+        ? 'Палец слева — движение · кнопки справа — бой · прицел наводится сам, протяните пальцем справа, чтобы целиться вручную'
+        : 'WASD — движение · ЛКМ / Пробел — атака · 1 2 3 — умения · Shift — уклонение · F — зелье · I — инвентарь · E — торговец',
+        VIEW_W / 2, VIEW_H - 112);
       ctx.globalAlpha = 1;
     }
   }
@@ -449,6 +459,59 @@ class Renderer {
       ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.fillText(cd.toFixed(1), x + w / 2, y + w / 2 - 4);
     }
     ctx.fillStyle = '#d4a94a'; ctx.font = 'bold 10px sans-serif'; ctx.fillText(key, x + w / 2, y + w - 9);
+  }
+  // ---------- Сенсорный слой ----------
+  // Круглая кнопка с откатом. Полупрозрачная: под ней идёт бой, и она не должна
+  // его закрывать. Нажатая — заметно ярче, иначе на телефоне не видно отклика.
+  drawTouchButton(b, icon, color, opts = {}) {
+    const ctx = this.ctx;
+    const { cd = 0, full = 1, held = false, alpha = 0.5, size = 0 } = opts;
+    const ready = cd <= 0;
+    ctx.save();
+    ctx.globalAlpha = held ? 0.85 : alpha;
+    ctx.fillStyle = 'rgba(8,8,14,0.75)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ready ? color : '#3a3a52'; ctx.lineWidth = held ? 4 : 2.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 1, 0, Math.PI * 2); ctx.stroke();
+    if (!ready) {
+      // Сектор отката закрашивается по часовой от вертикали — как в нижнем ряду.
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.beginPath(); ctx.moveTo(b.x, b.y);
+      ctx.arc(b.x, b.y, b.r - 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (cd / full));
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = ready ? color : '#666';
+    ctx.font = `bold ${size || Math.round(b.r * 0.9)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(icon, b.x, b.y);
+    if (!ready) { ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.fillText(cd.toFixed(1), b.x, b.y); }
+    ctx.restore();
+  }
+  drawTouchControls() {
+    const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero, t = g.input.touch, u = TOUCH_UI;
+    this.drawTouchButton(u.attack, '⚔', hero.color, { held: t.held('attack'), alpha: 0.55 });
+    this.drawTouchButton(u.dodge, '⇢', '#9a97a8', { cd: p.dodgeCd, full: 1.4, held: t.held('dodge') });
+    for (let i = 0; i < 3; i++) {
+      const sk = SKILLS[hero.skills[i]];
+      this.drawTouchButton(u.skills[i], sk.icon, hero.color,
+        { cd: p.skillCds[i], full: sk.cooldown * (1 - p.cdr()), held: t.held('skill' + i) });
+    }
+    if (t.showUse) this.drawTouchButton(u.use, '⚖', '#6fc3df', { held: t.held('use'), alpha: 0.7 });
+    this.drawTouchButton(u.bag, '☰', '#e6e2d3', { held: t.held('bag'), alpha: 0.45, size: 22 });
+    this.drawTouchButton(u.pause, '❙❙', '#e6e2d3', { held: t.held('pause'), alpha: 0.45, size: 16 });
+    // Плавающий стик: кольцо там, где палец опустился, шайба — куда его увели.
+    const s = t.stick;
+    if (s) {
+      const dx = s.x - s.ox, dy = s.y - s.oy, len = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, STICK_MAX / len);
+      ctx.save();
+      ctx.globalAlpha = 0.4;
+      ctx.strokeStyle = '#e6e2d3'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(s.ox, s.oy, STICK_MAX, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = hero.color;
+      ctx.beginPath(); ctx.arc(s.ox + dx * k, s.oy + dy * k, 26, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
   }
   drawMinimap() {
     const ctx = this.ctx, g = this.g, map = g.map, p = g.player;

@@ -22,10 +22,15 @@ class Input {
     canvas.addEventListener('mousedown', (e) => { toCanvas(e); if (e.button === 0) { this.mouse.down = true; this.mouse.clicked = true; } if (e.button === 2) this.mouse.rdown = true; });
     window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouse.down = false; if (e.button === 2) this.mouse.rdown = false; });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.touch = new TouchControls(canvas);
   }
   down(code) { return !!this.keys[code]; }
   hit(code) { const v = !!this.pressed[code]; this.pressed[code] = false; return v; }
-  endFrame() { this.pressed = {}; this.mouse.clicked = false; }
+  // Сенсорный слой спит, пока экрана не коснулись, поэтому обе проверки безопасны.
+  tHit(name) { return this.touch.hit(name); }
+  tHeld(name) { return this.touch.held(name); }
+  get touchMode() { return this.touch.enabled; }
+  endFrame() { this.pressed = {}; this.mouse.clicked = false; this.touch.endFrame(); }
 }
 
 class Game {
@@ -126,8 +131,8 @@ class Game {
     this.time += dt;
     const inp = this.input;
     if (this.state === 'run') {
-      if (inp.hit('Escape')) { this.state = 'paused'; this.ui.showPause(); inp.endFrame(); return; }
-      if (inp.hit('KeyI') || inp.hit('Tab')) { this.state = 'inventory'; this.ui.showInventory(); inp.endFrame(); return; }
+      if (inp.hit('Escape') || inp.tHit('pause')) { this.state = 'paused'; this.ui.showPause(); inp.endFrame(); return; }
+      if (inp.hit('KeyI') || inp.hit('Tab') || inp.tHit('bag')) { this.state = 'inventory'; this.ui.showInventory(); inp.endFrame(); return; }
       this.runStats.time += dt;
       this.updatePlayer(dt);
       this.updateEnemies(dt);
@@ -152,18 +157,35 @@ class Game {
     // Регенерация и яд.
     if (p.regen() > 0) p.hp = Math.min(p.maxHp, p.hp + p.regen() * dt);
     if (p.poisonTime > 0) { p.poisonTime -= dt; p.hp -= p.poison * dt; if (p.hp <= 0) { this.playerDie('яд'); return; } }
-    // Прицел по мыши.
-    const wx = inp.mouse.x + this.camera.x, wy = inp.mouse.y + this.camera.y;
-    const ad = dist(p.x, p.y, wx, wy);
-    if (ad > 4) { p.aim.x = (wx - p.x) / ad; p.aim.y = (wy - p.y) / ad; }
-    // Движение.
+    // Движение: стик, если играют пальцем, иначе клавиатура. Стик аналоговый —
+    // длина вектора меньше единицы даёт шаг медленнее, и это нужное поведение.
     let mx = 0, my = 0;
-    if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
-    if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
-    if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
-    if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+    const tmove = inp.touchMode ? inp.touch.moveVector() : null;
+    if (tmove) { mx = tmove.x; my = tmove.y; }
+    else {
+      if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
+      if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
+      if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
+      if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+      const n = Math.hypot(mx, my);
+      if (n > 0) { mx /= n; my /= n; }
+    }
     const ml = Math.hypot(mx, my);
-    if (ml > 0) { mx /= ml; my /= ml; }
+    // Прицел. Мышь наводит точно, палец — нет, поэтому на сенсоре ведём цель сами:
+    // ручная протяжка по правой половине, иначе ближайший враг, иначе направление бега.
+    if (inp.touchMode) {
+      const want = inp.touch.aimVector() || autoAimDir(this, p) || (ml > 0 ? { x: mx / ml, y: my / ml } : null);
+      if (want) {
+        const k = Math.min(1, dt * AIM_SMOOTH);
+        p.aim.x += (want.x - p.aim.x) * k; p.aim.y += (want.y - p.aim.y) * k;
+        const al = Math.hypot(p.aim.x, p.aim.y) || 1;
+        p.aim.x /= al; p.aim.y /= al;
+      }
+    } else {
+      const wx = inp.mouse.x + this.camera.x, wy = inp.mouse.y + this.camera.y;
+      const ad = dist(p.x, p.y, wx, wy);
+      if (ad > 4) { p.aim.x = (wx - p.x) / ad; p.aim.y = (wy - p.y) / ad; }
+    }
     p.vx = mx; p.vy = my;
     if (p.dash) {
       const d = p.dash;
@@ -185,22 +207,24 @@ class Game {
     // Умения.
     const skillKeys = ['Digit1', 'Digit2', 'Digit3'];
     for (let i = 0; i < 3; i++) {
-      if (inp.hit(skillKeys[i]) && p.stunTime <= 0) this.useSkill(i);
+      if ((inp.hit(skillKeys[i]) || inp.tHit('skill' + i)) && p.stunTime <= 0) this.useSkill(i);
     }
-    if ((inp.hit('ShiftLeft') || inp.hit('ShiftRight')) && p.dodgeCd <= 0 && !p.dash && p.stunTime <= 0) {
+    if ((inp.hit('ShiftLeft') || inp.hit('ShiftRight') || inp.tHit('dodge')) && p.dodgeCd <= 0 && !p.dash && p.stunTime <= 0) {
       const dir = ml > 0 ? { x: mx, y: my } : { x: p.aim.x, y: p.aim.y };
       this.playerDash(p, dir, 110, 0.18, { invuln: true });
       p.dodgeCd = 1.4;
     }
-    if (inp.hit('KeyF')) this.useConsumable('potion');
-    if (inp.hit('KeyG')) this.useConsumable('lembas');
-    if (inp.hit('KeyR')) this.useConsumable('fireScroll');
-    if (inp.hit('KeyT')) this.useConsumable('elixir');
-    // Атака.
-    if ((inp.mouse.down || inp.down('Space')) && p.attackTimer <= 0 && !p.dash && p.stunTime <= 0) this.playerAttack();
-    // Взаимодействие.
-    if (inp.hit('KeyE')) {
-      if (this.merchant && dist(p.x, p.y, this.merchant.x, this.merchant.y) < 60) { this.state = 'shop'; this.ui.showShop(this.merchant); return; }
+    const consKeys = ['KeyF', 'KeyG', 'KeyR', 'KeyT'];
+    for (let i = 0; i < CONSUMABLE_ORDER.length; i++) {
+      if (inp.hit(consKeys[i]) || inp.tHit('cons' + i)) this.useConsumable(CONSUMABLE_ORDER[i]);
+    }
+    // Атака. С сенсора кнопка удерживается, поэтому бьём, пока палец лежит.
+    if ((inp.mouse.down || inp.down('Space') || inp.tHeld('attack')) && p.attackTimer <= 0 && !p.dash && p.stunTime <= 0) this.playerAttack();
+    // Взаимодействие. Клавиши E у телефона нет, поэтому у торговца всплывает кнопка.
+    const nearMerchant = !!this.merchant && dist(p.x, p.y, this.merchant.x, this.merchant.y) < 60;
+    inp.touch.showUse = nearMerchant;
+    if ((inp.hit('KeyE') || inp.tHit('use')) && nearMerchant) {
+      this.state = 'shop'; this.ui.showShop(this.merchant); return;
     }
     // Сундуки.
     for (const c of this.chests) if (!c.opened && dist(p.x, p.y, c.x, c.y) < p.r + c.r + 2) this.openChest(c);

@@ -53,7 +53,7 @@ html, body {
   border: 1px solid var(--panel-border);
   border-radius: 10px;
   padding: 24px 28px;
-  min-width: 420px; max-width: 900px; max-height: 92vh;
+  min-width: var(--w, 420px); max-width: 900px; max-height: 92vh;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,0.6);
 }
@@ -200,3 +200,64 @@ kbd {
 .start-item:hover { border-color: var(--accent); }
 .start-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,169,74,0.4); }
 .start-item.locked { opacity: 0.55; }
+
+/* ---------------------------------------------------------------
+   Телефон и планшет
+   --------------------------------------------------------------- */
+
+/* touch-action: none обязателен. Без него браузер считает движение пальца по
+   холсту прокруткой страницы и забирает касание себе — стик срывается на
+   первом же ведении. Заодно снимаем подсветку тапа и выделение текста. */
+#game {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+html, body { overscroll-behavior: none; }
+
+/* Экраны меню, инвентаря и лавки — обычный DOM поверх холста. Их фиксированные
+   ширины (420 и 720 px) шире телефона в портрете и на узких экранах вылезают
+   за край, унося кнопки с собой. */
+@media (max-width: 780px) {
+  .panel {
+    --w: 0; width: calc(100vw - 24px); max-width: 100%;
+    padding: 16px 14px; border-radius: 8px;
+    /* Вырез и «шторка» жестов на современных телефонах. */
+    padding-left: max(14px, env(safe-area-inset-left));
+    padding-right: max(14px, env(safe-area-inset-right));
+  }
+  .inv-panel { min-width: 0; }
+  /* В две колонки инвентарь на телефоне не помещается — ставим одну. */
+  .inv-layout { grid-template-columns: 1fr; gap: 12px; }
+  .panel h1 { font-size: 24px; }
+  /* Палец не попадает в цель меньше ~44 px — это нижняя граница у Apple и Google. */
+  .btn, .tab, .bag-slot, .slot, .start-item { min-height: 44px; }
+}
+
+/* Игра сделана под ландшафт 1024×640. В портрете холст ужимается до полоски,
+   в которой ничего не разобрать, поэтому просим повернуть телефон.
+   Подсказка нарисована на ::after, а не отдельным элементом: tools/bundle.js
+   собирает разметку сам и лишние теги в автономный файл не перенёс бы. */
+@media (orientation: portrait) and (pointer: coarse) {
+  body::after {
+    content: "Поверните телефон горизонтально";
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 32px;
+    background: var(--bg); color: var(--accent);
+    font-size: 20px; font-weight: bold; text-align: center;
+  }
+}
+
+/* Крестик закрытия поверх оверлея. Оверлей не прокручивается — в отличие от
+   панели, — поэтому кнопка остаётся на экране, как бы далеко ни ушло содержимое. */
+.panel-x {
+  position: absolute; z-index: 5;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  width: 44px; height: 44px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--panel); border: 1px solid var(--panel-border); border-radius: 50%;
+  color: var(--text); font-size: 26px; line-height: 1; cursor: pointer;
+}
+.panel-x:hover { border-color: var(--accent); color: var(--accent); }

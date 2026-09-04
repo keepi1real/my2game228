@@ -3,7 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>Тени Подгорья</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- user-scalable=no: на телефоне игра управляется касаниями, и двойной тап
+       по кнопке умения не должен вместо удара приближать страницу. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#12121a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/visual-assets.css">
 </head>
@@ -13,6 +22,7 @@
     <div id="ui"></div>
   </div>
   <script src="js/utils.js"></script>
+  <script src="js/touch.js"></script>
   <script src="js/data.js"></script>
   <script src="js/save.js"></script>
   <script src="js/dungeon.js"></script>
@@ -22,5 +32,17 @@
   <script src="js/visual-assets.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
+  <!-- Регистрация service worker. Встроенные скрипты не попадают в dist/index.html
+       (tools/bundle.js собирает только те, что с src), и это правильно: автономный
+       файл открывают с диска, где service worker недоступен и не нужен. -->
+  <script>
+    // Только по http(s): по file:// регистрация выбрасывает исключение,
+    // а двойной клик по index.html должен работать по-прежнему.
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
