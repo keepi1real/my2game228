@@ -21,11 +21,16 @@ node tools/server.js
 Второй способ — выложить игру на статический хостинг с HTTPS. Репозиторий
 публичный, поэтому GitHub Pages бесплатны и настраиваются в три клика:
 
-**Settings → Pages → Source: Deploy from a branch → Branch:
-`claude/lotr-2d-game-dev-gatk6f`, папка `/ (root)` → Save.**
+В репозитории лежит `.github/workflows/pages.yml`: он собирает папку для
+раздачи и выкладывает её сам, а `configure-pages` с `enablement: true` включает
+Pages без захода в настройки. Через минуту после пуша игра будет на
+`https://keepi1real.github.io/my2game228/`.
 
-Через минуту игра будет на `https://keepi1real.github.io/my2game228/`. Ничего
-собирать не надо: `index.html` лежит в корне, а все пути в коде относительные —
+Если выкладка не проходит из-за ограничений окружения `github-pages` (по
+умолчанию оно пускает только ветку по умолчанию), включите Pages вручную:
+**Settings → Pages → Source: Deploy from a branch → Branch:
+`claude/lotr-2d-game-dev-gatk6f`, папка `/ (root)` → Save.** Собирать при этом
+ничего не нужно: `index.html` лежит в корне, а все пути в коде относительные —
 раздача из подпапки проверена, service worker получает scope `/my2game228/`.
 
 Тогда Chrome предложит «Установить приложение», и игра появится на рабочем
@@ -188,6 +193,7 @@ bubblewrap build
 ```
 node tests/run.js       # данные и генерация, без браузера
 node tests/browser.js   # сенсор, вёрстка под телефон, PWA — нужен playwright
+node tests/combat.js    # бой, движение, лут — нужен playwright
 ```
 
 Второй сам поднимает `tools/server.js`, эмулирует телефон 844×390 в ландшафте с

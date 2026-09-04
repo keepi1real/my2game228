@@ -135,6 +135,7 @@ class Pickup {
   constructor(x, y, kind, payload) {
     this.x = x; this.y = y; this.kind = kind; // 'item' | 'gold' | 'consumable'
     Object.assign(this, payload);
+    this.r = 6;   // нужен moveEntity: и при разлёте, и при притяжении золота
     this.bob = R.float(0, 6.28); this.age = 0;
     const a = R.float(0, 6.28), s = R.float(30, 80);
     this.vx = Math.cos(a) * s; this.vy = Math.sin(a) * s;

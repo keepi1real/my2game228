@@ -251,6 +251,12 @@ class Game {
     }
     e.x = clamp(e.x, e.r, map.w * TILE - e.r); e.y = clamp(e.y, e.r, map.h * TILE - e.r);
   }
+  // Достаёт ли a до b по прямой, не через стену. Проверка тайловая — та же,
+  // по которой враги видят игрока, поэтому «вижу» и «достану» не расходятся.
+  canReach(a, b) {
+    return lineOfSight(this.map, Math.floor(a.x / TILE), Math.floor(a.y / TILE),
+      Math.floor(b.x / TILE), Math.floor(b.y / TILE));
+  }
   playerAttack() {
     const p = this.player, atk = this.hero.attack;
     p.attackTimer = p.attackCooldown();
@@ -266,6 +272,7 @@ class Game {
         const d = dist(p.x, p.y, e.x, e.y);
         if (d > atk.range + e.r) continue;
         if (Math.abs(angleDiff(a, angleTo(p.x, p.y, e.x, e.y))) > atk.arc / 2 + Math.asin(Math.min(1, e.r / Math.max(d, 1)))) continue;
+        if (!this.canReach(p, e)) continue;   // то же правило, что и для врагов
         this.hitEnemy(e, p.damage() * mult, { knockback: 140 });
         hitAny = true;
       }
@@ -384,7 +391,16 @@ class Game {
     const luck = p.meta.dropMult;
     if (e.isBoss) {
       this.runStats.bossKills++;
-      for (let i = 0; i < 2; i++) { const rar = R.chance(0.5) ? 'epic' : 'rare'; const pool = ITEM_BASES.filter((b) => b.tier <= this.floor + 2 && b.tier >= this.floor - 3); const base = R.pick(pool); this.pickups.push(new Pickup(e.x, e.y, 'item', { item: makeItem(base.id, rar) })); }
+      for (let i = 0; i < 2; i++) {
+        const rar = R.chance(0.5) ? 'epic' : 'rare';
+        // Окно тира узкое, и стоит сдвинуть BOSS_FLOORS или тиры предметов, как
+        // оно опустеет: R.pick вернёт undefined и убийство босса свалит игру.
+        let pool = ITEM_BASES.filter((b) => b.tier <= this.floor + 2 && b.tier >= this.floor - 3);
+        if (!pool.length) pool = ITEM_BASES.filter((b) => b.tier <= this.floor + 2);
+        if (!pool.length) pool = ITEM_BASES;
+        const base = R.pick(pool);
+        this.pickups.push(new Pickup(e.x, e.y, 'item', { item: makeItem(base.id, rar) }));
+      }
       this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: 'potion' }));
       this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: 'potion' }));
       this.stairsOpen = true; this.boss = null;
@@ -397,7 +413,10 @@ class Game {
       if (R.chance(dropChance)) this.pickups.push(new Pickup(e.x, e.y, 'item', { item: randomItem(this.floor, luck) }));
       if (R.chance(0.10 * luck)) this.pickups.push(new Pickup(e.x, e.y, 'consumable', { id: randomConsumable() }));
     }
-    Save.save();
+    // Не пишем в localStorage на каждом убийстве: JSON.stringify всего прогресса
+    // в разгар боя — заметный провал кадра на телефоне. Помечаем и сбрасываем
+    // раз в пару секунд из updateWorld, а на переходах и в конце забега — сразу.
+    Save.saveSoon();
   }
 
   // ---------- Враги ----------
@@ -423,7 +442,11 @@ class Game {
     if (Math.abs(e.kx) > 1 || Math.abs(e.ky) > 1) { this.moveEntity(e, e.kx * dt, e.ky * dt); e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt); }
     if (e.telegraph) { e.telegraph.time -= dt; if (e.telegraph.time <= 0) { this.resolveTelegraph(e); } return; }
     if (e.charge) { this.updateCharge(e, dt); return; }
-    if (e.stun > 0) { e.windup = 0; return; }
+    // Оглушение отменяет замах, а не откладывает его. Раньше здесь обнулялся
+    // только таймер, а состояние оставалось 'windup': на следующем же кадре после
+    // оглушения таймер уходил в минус и удар случался мгновенно. Из-за этого
+    // «Вспышка света» Митрандира не спасала от толпы, а собирала её удары в залп.
+    if (e.stun > 0) { if (e.state === 'windup') e.state = 'chase'; e.windup = 0; return; }
     const d = dist(p.x, p.y, e.x, e.y);
     const etx = Math.floor(e.x / TILE), ety = Math.floor(e.y / TILE), ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
     const los = d < def.sight && lineOfSight(map, etx, ety, ptx, pty);
@@ -494,10 +517,12 @@ class Game {
     const d = dist(p.x, p.y, e.x, e.y);
     if (def.ranged) {
       const a = angleTo(e.x, e.y, p.x, p.y);
-      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
+      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', src: e, size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
     } else {
       this.effects.push({ type: 'slash', x: e.x, y: e.y, angle: Math.atan2(e.windupDir.y, e.windupDir.x), r: def.attackRange + 6, time: 0.15, color: def.color });
-      if (d <= def.attackRange + p.r + 10) {
+      // Длиннорукие бьют дальше 64 px — это ширина стены между двумя тайлами, —
+      // и до проверки видимости тролль и оба босса доставали игрока сквозь стену.
+      if (d <= def.attackRange + p.r + 10 && this.canReach(e, p)) {
         this.damagePlayer(e.dmg, e);
         if (def.poison) { p.poison = def.poison * (1 + this.floor * 0.1); p.poisonTime = 4; }
         if (def.knockback) { const a = angleTo(e.x, e.y, p.x, p.y); this.moveEntity(p, Math.cos(a) * def.knockback * 0.25, Math.sin(a) * def.knockback * 0.25); }
@@ -516,7 +541,7 @@ class Game {
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, 'goblin', 3); return false; }
     } else if (e.def.id === 'morgul') {
       if (e.abilityTimers.blink <= 0 && d > 160) { e.abilityTimers.blink = ab.blink; this.blinkBoss(e); return false; }
-      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
+      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', src: e, size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
       if (e.abilityTimers.scream <= 0 && d < 220) { e.abilityTimers.scream = ab.scream; e.telegraph = { type: 'circle', x: e.x, y: e.y, r: 210, time: 0.8, total: 0.8, dmgMult: 0.9, slow: 3 }; return true; }
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, e.phase === 2 ? 'shadow' : 'wraith', 2); return false; }
     }
@@ -586,7 +611,7 @@ class Game {
           }
         } else if (dist(pr.x, pr.y, p.x, p.y) < p.r + pr.size) {
           pr.dead = true;
-          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
+          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, pr.src || null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
           break;
         }
       }
@@ -611,9 +636,11 @@ class Game {
     this.bagFullTimer = Math.max(0, this.bagFullTimer - dt);
     for (const it of this.pickups) {
       it.age += dt;
-      if (it.age < 0.4) { this.moveEntity(Object.assign(it, { r: 6 }), it.vx * dt, it.vy * dt); it.vx *= 0.9; it.vy *= 0.9; continue; }
+      if (it.age < 0.4) { this.moveEntity(it, it.vx * dt, it.vy * dt); it.vx *= 0.9; it.vy *= 0.9; continue; }
       const d = dist(p.x, p.y, it.x, it.y);
-      if (it.kind === 'gold' && d < 90) { const a = angleTo(it.x, it.y, p.x, p.y); const sp = 260 + (90 - d) * 4; it.x += Math.cos(a) * sp * dt; it.y += Math.sin(a) * sp * dt; }
+      // Притяжение золота идёт через moveEntity, а не прибавкой к координатам:
+      // напрямую монеты пролетали сквозь стены к игроку в соседней комнате.
+      if (it.kind === 'gold' && d < 90) { const a = angleTo(it.x, it.y, p.x, p.y); const sp = 260 + (90 - d) * 4; this.moveEntity(it, Math.cos(a) * sp * dt, Math.sin(a) * sp * dt); }
       if (d < p.r + 10) {
         if (it.kind === 'gold') { p.gold += it.amount; this.runStats.gold += it.amount; it.dead = true; this.addText(p.x, p.y - 20, '+' + it.amount + ' зол.', '#ffd54f', 0.9); }
         else if (it.kind === 'consumable') { p.consumables[it.id]++; it.dead = true; this.addText(p.x, p.y - 20, CONSUMABLES[it.id].name, CONSUMABLES[it.id].color, 0.9); }
@@ -668,6 +695,7 @@ class Game {
     const p = this.player;
     if (p.gold < entry.price) { this.message('Не хватает золота.'); return false; }
     if (entry.kind === 'item') {
+      if (entry.sold) return false;
       if (p.bagFull()) { this.message('Сумка полна.'); return false; }
       p.gold -= entry.price; p.bag.push(entry.item); entry.sold = true;
     } else {
@@ -693,6 +721,7 @@ class Game {
     this.effects = this.effects.filter((ef) => ef.time > 0);
     for (const m of this.messages) m.life -= dt;
     this.messages = this.messages.filter((m) => m.life > 0);
+    Save.tick(dt);
   }
   burst(x, y, color, n, speed = 90) {
     for (let i = 0; i < n; i++) {

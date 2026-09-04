@@ -4,61 +4,17 @@
 //   npm i playwright && npx playwright install chromium
 //   node tests/browser.js
 //
-// Playwright в зависимостях не числится и в репозиторий не тянется: игра от него
-// не зависит, а тест нужен только когда трогают ввод, HUD или манифест. Без
-// установленного playwright скрипт молча выходит с нулевым кодом, чтобы не
-// валить прогон tests/run.js на машине, где браузера нет.
+// Регрессии по бою, движению и луту лежат отдельно, в tests/combat.js.
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { withPage, checker } = require('./harness');
+const { check, done } = checker();
 
-let chromium;
-try { ({ chromium } = require('playwright')); }
-catch (e) {
-  console.log('playwright не установлен — браузерные проверки пропущены.');
-  console.log('Поставить: npm i playwright && npx playwright install chromium');
-  process.exit(0);
-}
-
-const PORT = Number(process.env.PORT) || 8199;
-const root = path.join(__dirname, '..');
-
-// Где взять Chromium. Обычно его ставит сам playwright, но в готовых образах
-// браузер часто лежит рядом и другой версии — тогда указываем путь руками.
-function chromePath() {
-  const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  if (!base || !fs.existsSync(base)) return undefined;
-  const dir = fs.readdirSync(base).filter((d) => d.startsWith('chromium-')).sort().pop();
-  if (!dir) return undefined;
-  const exe = path.join(base, dir, 'chrome-linux', 'chrome');
-  return fs.existsSync(exe) ? exe : undefined;
-}
-
-const fail = [];
-function check(cond, msg) { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fail.push(msg); }
-
-(async () => {
-  const server = spawn(process.execPath, [path.join(root, 'tools', 'server.js'), String(PORT)], { stdio: 'ignore' });
-  const stop = () => { try { server.kill(); } catch (e) {} };
-  process.on('exit', stop);
-
-  const browser = await chromium.launch({ executablePath: chromePath() });
-  const ctx = await browser.newContext({
+withPage({
+  context: {
     viewport: { width: 844, height: 390 },   // телефон, повёрнутый в ландшафт
     hasTouch: true, isMobile: true, deviceScaleFactor: 2,
-  });
-  const page = await ctx.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-
-  // Сервер только что стартовал — даём ему занять порт.
-  for (let i = 0; i < 20; i++) {
-    try { await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load', timeout: 2000 }); break; }
-    catch (e) { await new Promise((r) => setTimeout(r, 250)); }
-  }
-  await page.waitForFunction(() => window.game, null, { timeout: 10000 });
+  },
+}, async ({ page, ctx, errors }) => {
 
   // Пересчёт координат холста (1024×640) в координаты страницы.
   const mapPt = (x, y) => page.evaluate(([x, y]) => {
@@ -177,8 +133,6 @@ function check(cond, msg) { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!
 
   check(errors.length === 0, 'ошибок в консоли нет' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
 
-  await browser.close();
-  stop();
-  console.log(fail.length ? `\n${fail.length} проверок провалено` : '\nВсе браузерные проверки пройдены.');
-  process.exit(fail.length ? 1 : 0);
-})().catch((e) => { console.error('Сбой:', e); process.exit(1); });
+});
+
+process.on('beforeExit', () => done('телефон и PWA'));

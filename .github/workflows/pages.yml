@@ -1,0 +1,49 @@
+# Выкладка игры на GitHub Pages.
+#
+# configure-pages с enablement: true включает Pages сам, поэтому в настройках
+# репозитория руками ничего делать не нужно — достаточно, чтобы workflow отработал.
+#
+# Выкладываем не корень репозитория, а собранную папку: в корне лежат tests,
+# tools и .git, которым на странице делать нечего. Флаг --pwa оставляет
+# service worker и .nojekyll — без них не будет ни офлайна, ни установки.
+name: Pages
+
+on:
+  push:
+    branches: [claude/lotr-2d-game-dev-gatk6f]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Параллельные выкладки конфликтуют; недоделанную не отменяем, чтобы страница
+# не осталась в промежуточном состоянии.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Проверить данные и генерацию
+        run: node tests/run.js
+      - name: Собрать папку для раздачи
+        run: node tools/make-webdir.js --pwa www
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: www
+      - id: deployment
+        uses: actions/deploy-pages@v4

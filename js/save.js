@@ -34,7 +34,20 @@ const Save = {
     return d;
   },
   save() {
+    this.dirty = false; this.timer = 0;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.data)); } catch (e) { /* приватный режим и т.п. */ }
+  },
+  // Отложенная запись. localStorage синхронный, а JSON.stringify всего прогресса
+  // в разгар боя — заметный провал кадра на телефоне. Убийства помечают прогресс
+  // грязным, а на диск он уходит раз в пару секунд; переходы между этажами и
+  // конец забега по-прежнему пишут сразу через save().
+  dirty: false,
+  timer: 0,
+  saveSoon() { this.dirty = true; },
+  tick(dt) {
+    if (!this.dirty) return;
+    this.timer += dt;
+    if (this.timer >= 2) this.save();
   },
   reset() { this.data = defaultSave(); this.save(); },
   hero(id) { return this.data.heroes[id]; },

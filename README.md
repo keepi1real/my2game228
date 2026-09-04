@@ -53,10 +53,11 @@ node tests/run.js
 
 ```
 npm i playwright && npx playwright install chromium
-node tests/browser.js
+node tests/browser.js   # сенсор, вёрстка под телефон, PWA
+node tests/combat.js    # бой, движение, лут — регрессии по найденным багам
 ```
 
-Без установленного playwright скрипт молча пропускает проверки.
+Без установленного playwright оба скрипта молча пропускают проверки.
 
 ## Управление
 
@@ -198,6 +199,8 @@ manifest.webmanifest  описание PWA
 sw.js           service worker: игра работает без сети
 tests/run.js    проверки данных и генерации без браузера
 tests/browser.js проверки в Chromium: сенсор, телефонная вёрстка, PWA
+tests/combat.js  регрессии по бою, движению и луту
+tests/harness.js общая обвязка браузерных проверок
 tests/fixtures/ тестовый спрайт для проверки отрисовки
 ```
 

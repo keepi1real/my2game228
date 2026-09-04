@@ -1,5 +1,9 @@
 'use strict';
-// Готовит папку www/ для упаковки в APK: node tools/make-webdir.js [куда]
+// Готовит папку с игрой: node tools/make-webdir.js [--pwa] [куда]
+//
+// Без флага — под APK: service worker не нужен и мешает. С --pwa — под раздачу
+// по HTTPS (GitHub Pages и прочие): туда идут sw.js и .nojekyll, а регистрация
+// в index.html остаётся на месте.
 //
 // Capacitor копирует в приложение всё содержимое указанной папки. Корень репозитория
 // на эту роль не годится: туда попали бы .git, node_modules, tests и tools —
@@ -13,11 +17,13 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.join(__dirname, '..');
-const out = path.resolve(process.argv[2] || path.join(root, 'www'));
+const args = process.argv.slice(2);
+const pwa = args.includes('--pwa');
+const out = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(root, 'www'));
 
 // Service worker в APK не кладём: внутри WebView всё и так локальное, а лишний
 // слой кэша только помешает обновлению игры вместе с приложением.
-const FILES = ['index.html', 'manifest.webmanifest'];
+const FILES = ['index.html', 'manifest.webmanifest'].concat(pwa ? ['sw.js', '.nojekyll'] : []);
 const DIRS = ['css', 'js', 'assets'];
 
 function copyDir(from, to) {
@@ -40,10 +46,12 @@ for (const d of DIRS) count += copyDir(path.join(root, d), path.join(out, d));
 
 // Регистрация service worker внутри WebView только мешает: обновление приложения
 // приходит с новым APK, а не из сети. Вырезаем ровно этот блок, разметку не трогаем.
-const idx = path.join(out, 'index.html');
-const html = fs.readFileSync(idx, 'utf8')
-  .replace(/\n\s*<!-- Регистрация service worker[\s\S]*?<\/script>\n/, '\n');
-fs.writeFileSync(idx, html);
+if (!pwa) {
+  const idx = path.join(out, 'index.html');
+  const html = fs.readFileSync(idx, 'utf8')
+    .replace(/\n\s*<!-- Регистрация service worker[\s\S]*?<\/script>\n/, '\n');
+  fs.writeFileSync(idx, html);
+}
 
 const size = (function du(p) {
   const s = fs.statSync(p);
@@ -52,4 +60,6 @@ const size = (function du(p) {
 })(out);
 
 console.log(`Записано ${out}: ${count} файлов, ${(size / 1024 / 1024).toFixed(1)} МБ`);
-console.log('Дальше: npx cap sync android && cd android && ./gradlew assembleDebug');
+console.log(pwa
+  ? 'Готово к раздаче по HTTPS: service worker и .nojekyll на месте.'
+  : 'Дальше: npx cap sync android && cd android && ./gradlew assembleDebug');
