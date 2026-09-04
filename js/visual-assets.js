@@ -56,6 +56,18 @@ const SPRITES = {
 // Ориентиры высот на экране при тайле 32 px: герой 48, мелкий монстр 40, тролль 72, босс 110.
 const DEFAULT_ANCHOR_Y = 0.97;
 
+// ---------- Тайлы пола ----------
+// Бесшовные каменные текстуры 256x256. base заливает весь проходимый пол, остальные
+// ложатся поверх редкими мягкими пятнами, чтобы подземелье не выглядело одной простынёй.
+const FLOOR_TILES = {
+  base: 'assets/tiles/floor_plain.webp',
+  patches: [
+    'assets/tiles/floor_crack.webp',
+    'assets/tiles/floor_grit.webp',
+    'assets/tiles/floor_moss.webp',
+  ],
+};
+
 // ---------- Загрузка ----------
 const GAME_ART = new Map();
 const artKey = (kind, group, id) => `${kind}:${group}:${id}`;
@@ -77,6 +89,17 @@ function preloadGameArt() {
   }
 }
 preloadGameArt();
+
+function loadImage(src) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = src;
+  return img;
+}
+
+const BASE_TILE = loadImage(FLOOR_TILES.base);
+const PATCH_TILES = FLOOR_TILES.patches.map(loadImage);
+const tilesReady = () => ready(BASE_TILE) && PATCH_TILES.every(ready);
 
 // Подключить спрайт на ходу: достаточно положить файл и вызвать это с id из js/data.js.
 function registerSprite(group, id, def) {
@@ -184,6 +207,100 @@ function drawPortraitToken(ctx, img, def, x, y, radius, color) {
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+// ---------- Пол: запекание слоя ----------
+// Текстура пола не зависит от кадра, поэтому вся карта рисуется один раз в отдельный
+// холст, а каждый кадр из него берётся только видимый кусок одним drawImage.
+// Лестницу сюда не кладём: её вид меняется по ходу боя с боссом.
+
+// Пятно варианта с мягким краем. Узор привязан к координатам основного холста,
+// иначе плиты пятна съедут относительно базовых.
+function stampFloorPatch(ctx, img, map, rng) {
+  const room = map.rooms.length ? rng.pick(map.rooms) : null;
+  const cx = room ? (room.x + rng.float(0, room.w)) * TILE : rng.float(0, map.w * TILE);
+  const cy = room ? (room.y + rng.float(0, room.h)) * TILE : rng.float(0, map.h * TILE);
+  const r = rng.float(70, 190);
+  const size = Math.ceil(r * 2);
+
+  const patch = document.createElement('canvas');
+  patch.width = patch.height = size;
+  const p = patch.getContext('2d');
+  p.translate(-(cx - r), -(cy - r));
+  p.fillStyle = p.createPattern(img, 'repeat');
+  p.fillRect(cx - r, cy - r, size, size);
+  p.setTransform(1, 0, 0, 1, 0, 0);
+
+  // Радиальная маска: к краю пятно растворяется, иначе оно выглядит наклейкой.
+  p.globalCompositeOperation = 'destination-in';
+  const grad = p.createRadialGradient(r, r, r * 0.15, r, r, r);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  p.fillStyle = grad;
+  p.fillRect(0, 0, size, size);
+
+  ctx.globalAlpha = rng.float(0.35, 0.7);
+  ctx.drawImage(patch, cx - r, cy - r);
+  ctx.globalAlpha = 1;
+}
+
+// Одно и то же подземелье должно давать одну и ту же раскладку пятен.
+function floorSeed(map) {
+  let h = (map.w * 73856093) ^ (map.h * 19349663) ^ (map.rooms.length * 83492791);
+  for (const r of map.rooms) h = (h * 31 + r.cx * 977 + r.cy) | 0;
+  return Math.abs(h) || 1;
+}
+
+// Возвращает готовый холст или null, если текстуры ещё грузятся —
+// тогда render.js рисует пол заливкой и пробует снова на следующем кадре.
+function bakeFloorLayer(map) {
+  if (!tilesReady()) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = map.w * TILE;
+  canvas.height = map.h * TILE;
+  const ctx = canvas.getContext('2d');
+
+  // 1. Базовый камень — только под проходимыми тайлами и колоннами,
+  //    иначе текстура вылезет наружу там, где должна быть сплошная скала.
+  ctx.fillStyle = ctx.createPattern(BASE_TILE, 'repeat');
+  for (let y = 0; y < map.h; y++) {
+    for (let x = 0; x < map.w; x++) {
+      if (map.tiles[map.idx(x, y)] !== T_WALL) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    }
+  }
+
+  // 2. Пятна вариантов. source-atop удерживает их строго на уже залитом полу,
+  //    так что за границы комнат и коридоров они не выходят.
+  const rng = new RNG(floorSeed(map));
+  ctx.globalCompositeOperation = 'source-atop';
+  const perTile = Math.max(2, Math.round((map.w * map.h) / 700));
+  for (const img of PATCH_TILES) for (let i = 0; i < perTile; i++) stampFloorPatch(ctx, img, map, rng);
+  ctx.globalCompositeOperation = 'source-over';
+
+  // 3. Стены и колонны поверх пола.
+  for (let y = 0; y < map.h; y++) {
+    for (let x = 0; x < map.w; x++) {
+      const t = map.tiles[map.idx(x, y)], px = x * TILE, py = y * TILE;
+      if (t === T_WALL) {
+        // Стены в глубине скалы не рисуем — их всё равно не видно.
+        let nearFloor = false;
+        for (let oy = -1; oy <= 1 && !nearFloor; oy++) {
+          for (let ox = -1; ox <= 1; ox++) {
+            const n = map.get(x + ox, y + oy);
+            if (n !== T_WALL && n !== T_PILLAR) { nearFloor = true; break; }
+          }
+        }
+        if (!nearFloor) continue;
+        ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
+        if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+      } else if (t === T_PILLAR) {
+        ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
+        ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
+      }
+    }
+  }
+  return canvas;
 }
 
 // ---------- Точки расширения, которые вызывает render.js ----------

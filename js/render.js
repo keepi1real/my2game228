@@ -3,7 +3,7 @@
 
 const COLORS = {
   floor: '#24242f', floorAlt: '#20202a', wall: '#3a3a4e', wallTop: '#4a4a62', wallEdge: '#2a2a3a', pillar: '#55556e',
-  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
+  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', unseen: '#07070b', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
 };
 
 function drawShape(ctx, shape, x, y, r, color, angle = 0) {
@@ -42,34 +42,59 @@ class Renderer {
     ctx.restore();
     this.drawHud();
   }
+  // Слой пола печётся один раз на этаж и хранится вместе с картой, для которой сделан.
+  floorLayer(map) {
+    if (this.layerFor === map) return this.layer;
+    if (typeof bakeFloorLayer !== 'function') { this.layerFor = map; this.layer = null; return null; }
+    const baked = bakeFloorLayer(map);
+    if (!baked) return null;              // текстуры ещё грузятся — повторим на следующем кадре
+    this.layerFor = map; this.layer = baked;
+    return baked;
+  }
   drawMap() {
     const g = this.g, ctx = this.ctx, map = g.map;
+    const layer = this.floorLayer(map);
+    if (layer) {
+      // Весь пол и стены — одним drawImage вместо тысяч заливок по тайлам.
+      const vx = clamp(Math.floor(g.camera.x) - TILE, 0, layer.width);
+      const vy = clamp(Math.floor(g.camera.y) - TILE, 0, layer.height);
+      const vw = Math.min(layer.width - vx, VIEW_W + TILE * 2);
+      const vh = Math.min(layer.height - vy, VIEW_H + TILE * 2);
+      if (vw > 0 && vh > 0) ctx.drawImage(layer, vx, vy, vw, vh, vx, vy, vw, vh);
+    }
     const x0 = Math.max(0, Math.floor(g.camera.x / TILE) - 1), y0 = Math.max(0, Math.floor(g.camera.y / TILE) - 1);
     const x1 = Math.min(map.w - 1, Math.ceil((g.camera.x + VIEW_W) / TILE) + 1), y1 = Math.min(map.h - 1, Math.ceil((g.camera.y + VIEW_H) / TILE) + 1);
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
       const i = map.idx(x, y);
-      if (!map.explored[i]) continue;
       const t = map.tiles[i], px = x * TILE, py = y * TILE;
-      if (t === T_WALL) {
-        // Стены рисуем только если рядом есть пол (видимая грань).
-        let nearFloor = false;
-        for (let oy = -1; oy <= 1 && !nearFloor; oy++) for (let ox = -1; ox <= 1; ox++) if (map.get(x + ox, y + oy) !== T_WALL && map.get(x + ox, y + oy) !== T_PILLAR) { nearFloor = true; break; }
-        if (!nearFloor) continue;
-        ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
-        ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
-        if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
-      } else if (t === T_PILLAR) {
-        ctx.fillStyle = COLORS.floor; ctx.fillRect(px, py, TILE, TILE);
-        ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
-        ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
-      } else {
-        ctx.fillStyle = ((x + y) & 1) ? COLORS.floor : COLORS.floorAlt; ctx.fillRect(px, py, TILE, TILE);
-        if (t === T_STAIRS) {
-          ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
-          ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
-          ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText(g.stairsOpen ? '>' : '×', px + TILE / 2, py + TILE / 2 + 1);
+      if (!map.explored[i]) {
+        // Слой напечатан целиком, поэтому неразведанное надо закрасить.
+        if (layer) { ctx.fillStyle = COLORS.unseen; ctx.fillRect(px, py, TILE, TILE); }
+        continue;
+      }
+      if (!layer) {
+        // Запасной путь: пол и стены заливкой, как до текстур.
+        if (t === T_WALL) {
+          let nearFloor = false;
+          for (let oy = -1; oy <= 1 && !nearFloor; oy++) for (let ox = -1; ox <= 1; ox++) if (map.get(x + ox, y + oy) !== T_WALL && map.get(x + ox, y + oy) !== T_PILLAR) { nearFloor = true; break; }
+          if (!nearFloor) continue;
+          ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
+          if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
+        } else if (t === T_PILLAR) {
+          ctx.fillStyle = COLORS.floor; ctx.fillRect(px, py, TILE, TILE);
+          ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
+          ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
+        } else {
+          ctx.fillStyle = ((x + y) & 1) ? COLORS.floor : COLORS.floorAlt; ctx.fillRect(px, py, TILE, TILE);
         }
+      }
+      // Лестница рисуется каждый кадр: её вид меняется, пока босс жив.
+      if (t === T_STAIRS) {
+        ctx.fillStyle = g.stairsOpen ? '#2a2412' : '#1a1a20'; ctx.fillRect(px + 3, py + 3, TILE - 6, TILE - 6);
+        ctx.strokeStyle = g.stairsOpen ? COLORS.stairs : '#555'; ctx.lineWidth = 2; ctx.strokeRect(px + 3, py + 3, TILE - 6, TILE - 6);
+        ctx.fillStyle = g.stairsOpen ? COLORS.stairs : '#666'; ctx.font = 'bold 22px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(g.stairsOpen ? '>' : '×', px + TILE / 2, py + TILE / 2 + 1);
       }
       if (!map.visible[i]) { ctx.fillStyle = COLORS.fog; ctx.fillRect(px, py, TILE, TILE); }
     }
