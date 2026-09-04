@@ -38,8 +38,7 @@ class Renderer {
     this.drawMerchant();
     this.drawPickups();
     this.drawTelegraphs();
-    this.drawEnemies();
-    this.drawPlayer();
+    this.drawActors();
     this.drawProjectiles();
     this.drawEffects();
     this.drawParticles();
@@ -200,38 +199,53 @@ class Renderer {
       ctx.restore();
     }
   }
-  drawEnemies() {
-    const ctx = this.ctx, g = this.g;
-    for (const e of g.enemies) {
-      if (!this.visibleAt(e.x, e.y)) continue;
-      const def = e.def;
-      const group = e.isBoss ? 'bosses' : 'enemies';
-      const artId = e.isBoss ? def.id : e.type;
-      // Спрайт стоит ступнями на координате, фигура центрируется на ней — тень встаёт по-разному.
-      const spriteW = this.spriteWidth(group, artId);
-      this.drawShadow(e.x, spriteW ? e.y : e.y + e.r * 0.8, spriteW || e.r * 2.65);
-      const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
-      let color = def.color;
-      if (e.hitFlash > 0) color = '#ffffff';
-      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
-      if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
-      if (!this.drawArt(group, artId, e, e.r, color)) {
-        drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
-        ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(def.symbol, e.x, e.y + 1);
-      }
-      const top = this.bodyTop(group, artId, e, e.r);
-      if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, top - 8); }
-      if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, top, 3, 0, Math.PI * 2); ctx.fill(); }
-      // Полоска здоровья.
-      if (e.hp < e.maxHp && !e.isBoss) {
-        const w = e.r * 2 + 6, hy = top - 7;
-        ctx.fillStyle = '#000'; ctx.fillRect(e.x - w / 2, hy, w, 4);
-        ctx.fillStyle = '#e05a4a'; ctx.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
-      }
+  // Все существа рисуются одним отсортированным по Y проходом: кто стоит ниже на
+  // экране, тот ближе к зрителю и перекрывает стоящего выше. Без сортировки тролль
+  // ростом 88 px, находясь за спиной героя, ложился поверх него.
+  // Два прохода: сначала тела, потом надписи над головой — иначе полоска здоровья
+  // одного врага уходила бы под тело соседа.
+  drawActors() {
+    const g = this.g;
+    const actors = [];
+    for (const e of g.enemies) if (this.visibleAt(e.x, e.y)) actors.push(e);
+    actors.push(g.player);
+    actors.sort((a, b) => a.y - b.y);
+    for (const a of actors) (a === g.player ? this.drawPlayerBody() : this.drawEnemyBody(a));
+    for (const a of actors) (a === g.player ? this.drawPlayerOverlay() : this.drawEnemyOverlay(a));
+  }
+  // Группа и id арта для существа: у босса свой набор, у рядового монстра — тип.
+  artOf(e) { return { group: e.isBoss ? 'bosses' : 'enemies', id: e.isBoss ? e.def.id : e.type }; }
+  drawEnemyBody(e) {
+    const ctx = this.ctx, g = this.g, def = e.def;
+    const { group, id: artId } = this.artOf(e);
+    // Спрайт стоит ступнями на координате, фигура центрируется на ней — тень встаёт по-разному.
+    const spriteW = this.spriteWidth(group, artId);
+    this.drawShadow(e.x, spriteW ? e.y : e.y + e.r * 0.8, spriteW || e.r * 2.65);
+    const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
+    let color = def.color;
+    if (e.hitFlash > 0) color = '#ffffff';
+    if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
+    if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
+    if (!this.drawArt(group, artId, e, e.r, color)) {
+      drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
+      ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(def.symbol, e.x, e.y + 1);
     }
   }
-  drawPlayer() {
+  drawEnemyOverlay(e) {
+    const ctx = this.ctx, g = this.g;
+    const { group, id: artId } = this.artOf(e);
+    const top = this.bodyTop(group, artId, e, e.r);
+    if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, top - 8); }
+    if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, top, 3, 0, Math.PI * 2); ctx.fill(); }
+    // Полоска здоровья.
+    if (e.hp < e.maxHp && !e.isBoss) {
+      const w = e.r * 2 + 6, hy = top - 7;
+      ctx.fillStyle = '#000'; ctx.fillRect(e.x - w / 2, hy, w, 4);
+      ctx.fillStyle = '#e05a4a'; ctx.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
+    }
+  }
+  drawPlayerBody() {
     const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
     const spriteW = this.spriteWidth('heroes', hero.id);
     this.drawShadow(p.x, spriteW ? p.y : p.y + 10, spriteW || 32);
@@ -254,7 +268,10 @@ class Renderer {
     }
     if (swing && bladeInFront) this.drawSwingBlade(p, swing);
     ctx.restore();
-    const top = this.bodyTop('heroes', hero.id, p, p.r);
+  }
+  drawPlayerOverlay() {
+    const ctx = this.ctx, p = this.g.player;
+    const top = this.bodyTop('heroes', this.g.hero.id, p, p.r);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '11px sans-serif';
     for (const b of p.buffs) {
       if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.fillText('▲', p.x - 12, top - 8); }
