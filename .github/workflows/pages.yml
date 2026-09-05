@@ -1,23 +1,20 @@
 # Выкладка игры на GitHub Pages.
 #
-# Pages нужно один раз включить руками: Settings -> Pages -> Source: GitHub Actions.
-# Сам workflow этого сделать не может — пробовали с configure-pages
-# (enablement: true), GitHub отвечает «Create Pages site failed: Resource not
-# accessible by integration»: у токена Actions нет права создавать сайт.
+# Pages включены вручную (Settings -> Pages -> Source: GitHub Actions). Сам
+# workflow этого сделать не может: configure-pages с enablement: true получает
+# «Create Pages site failed: Resource not accessible by integration».
 #
-# Выкладка идёт с main. Окружение github-pages по умолчанию пускает только ветку
-# по умолчанию: запуск с рабочей ветки GitHub отклонял за две секунды, не начав
-# ни одного шага. Рабочая ветка оставлена в триггере намеренно — если её однажды
-# разрешат в настройках окружения, предпросмотр заработает сам собой.
+# Триггер только на main. Окружение github-pages пускает выкладку лишь с ветки
+# по умолчанию — запуск с рабочей ветки GitHub отклонял за две секунды, не начав
+# ни одного шага, и такие прогоны только засоряли историю.
 #
-# Выкладываем не корень репозитория, а собранную папку: в корне лежат tests,
-# tools и .git, которым на странице делать нечего. Флаг --pwa оставляет
-# service worker и .nojekyll — без них не будет ни офлайна, ни установки.
+# Перед выкладкой гоняются все три набора проверок, включая браузерные: раньше
+# в CI шёл только tests/run.js, и сломанное управление могло уехать на страницу.
 name: Pages
 
 on:
   push:
-    branches: [main, claude/lotr-2d-game-dev-gatk6f]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -37,13 +34,29 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      # Без браузера tests/browser.js и tests/combat.js выходят с нулём и молча
+      # пропускают проверки — на своей машине это удобно, а в CI означало бы
+      # зелёную выкладку без единой проверки. Здесь они обязаны отработать.
+      REQUIRE_BROWSER: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Проверить данные и генерацию
+
+      - name: Поставить браузер для проверок
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Данные и генерация
         run: node tests/run.js
+      - name: Бой, движение и лут
+        run: node tests/combat.js
+      - name: Сенсор, телефонная вёрстка и PWA
+        run: node tests/browser.js
+
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - uses: actions/configure-pages@v5

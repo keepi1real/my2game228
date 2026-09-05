@@ -58,6 +58,13 @@ function freePort() {
 async function withPage(opts, fn) {
   const pw = playwright();
   if (!pw) {
+    // На своей машине пропуск удобен: игра от playwright не зависит. В CI это
+    // означало бы зелёную сборку, не проверившую ничего, поэтому там выставлен
+    // REQUIRE_BROWSER и отсутствие браузера — ошибка, а не повод пройти мимо.
+    if (process.env.REQUIRE_BROWSER) {
+      console.error('playwright не установлен, а REQUIRE_BROWSER задан: проверки обязательны.');
+      process.exit(1);
+    }
     console.log('playwright не установлен — браузерные проверки пропущены.');
     console.log('Поставить: npm i playwright && npx playwright install chromium');
     process.exit(0);
