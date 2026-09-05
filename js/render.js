@@ -439,18 +439,21 @@ class Renderer {
       ctx.fillStyle = b.phase === 2 ? '#ff1744' : '#c62828'; ctx.fillRect(x, y + 8, w * clamp(b.hp / b.maxHp, 0, 1), 12);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(b.def.name, VIEW_W / 2, y + 1);
     }
+    // На сенсоре нижние ряды заменяются накладками из touch.js: настольные
+    // коробки умений там были бы 32 CSS-пикселя — мимо пальца.
+    const touch = typeof TouchControls !== 'undefined' && TouchControls.active;
     // Умения.
     const skW = 52, gap = 8, total = 3 * skW + 2 * gap + gap + skW;
     let sx = (VIEW_W - total) / 2, sy = VIEW_H - skW - 16;
-    for (let i = 0; i < 3; i++) {
+    if (!touch) for (let i = 0; i < 3; i++) {
       const sk = SKILLS[hero.skills[i]], cd = p.skillCds[i], full = sk.cooldown * (1 - p.cdr());
       this.drawSkillBox(sx + i * (skW + gap), sy, skW, sk.icon, String(i + 1), cd, full, hero.color, sk.name);
     }
-    this.drawSkillBox(sx + 3 * (skW + gap), sy, skW, '⇢', 'Shift', p.dodgeCd, 1.4, '#9a97a8', 'Уклонение');
+    if (!touch) this.drawSkillBox(sx + 3 * (skW + gap), sy, skW, '⇢', 'Shift', p.dodgeCd, 1.4, '#9a97a8', 'Уклонение');
     // Расходники.
     const cons = [['potion', 'F'], ['lembas', 'G'], ['fireScroll', 'R'], ['elixir', 'T']];
     let cx = VIEW_W - 16;
-    for (let i = cons.length - 1; i >= 0; i--) {
+    if (!touch) for (let i = cons.length - 1; i >= 0; i--) {
       const [id, key] = cons[i], c = CONSUMABLES[id], n = p.consumables[id];
       cx -= 46;
       ctx.fillStyle = 'rgba(8,8,14,0.7)'; ctx.beginPath(); ctx.roundRect(cx, VIEW_H - 58, 40, 44, 6); ctx.fill();
@@ -478,9 +481,14 @@ class Renderer {
     // Подсказка на первом этаже.
     if (g.floor === 1 && g.runStats.time < 12) {
       ctx.globalAlpha = clamp(12 - g.runStats.time, 0, 1); ctx.fillStyle = '#9a97a8'; ctx.font = '13px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('WASD — движение · ЛКМ / Пробел — атака · 1 2 3 — умения · Shift — уклонение · F — зелье · I — инвентарь · E — торговец', VIEW_W / 2, VIEW_H - 112);
+      // На сенсоре низ экрана занят накладками, поэтому подсказка уходит наверх.
+      ctx.fillText(touch
+        ? 'Слева — стик · держите атаку и тяните, чтобы целиться · 1 2 3 — умения · уклонение рядом'
+        : 'WASD — движение · ЛКМ / Пробел — атака · 1 2 3 — умения · Shift — уклонение · F — зелье · I — инвентарь · E — торговец',
+        VIEW_W / 2, touch ? 132 : VIEW_H - 112);
       ctx.globalAlpha = 1;
     }
+    if (typeof drawTouchControls === 'function') drawTouchControls(ctx, g);
   }
   drawSkillBox(x, y, w, icon, key, cd, full, color, name) {
     const ctx = this.ctx;

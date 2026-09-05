@@ -18,11 +18,14 @@ html, body {
   background: var(--bg); color: var(--text);
   font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow: hidden;
+  overscroll-behavior: none;          /* иначе жест вниз перезагружает страницу посреди боя */
   user-select: none;
+  -webkit-text-size-adjust: 100%;
 }
 #game-root {
   position: relative;
   width: 100vw; height: 100vh;
+  height: 100dvh;                     /* адресная строка мобильного браузера съедает 100vh */
   display: flex; align-items: center; justify-content: center;
 }
 #game {
@@ -34,6 +37,7 @@ html, body {
   height: auto;
   display: block;
   cursor: crosshair;
+  touch-action: none;                 /* без этого браузер забирает жесты под скролл и зум */
 }
 #ui {
   position: absolute; inset: 0;
@@ -52,13 +56,17 @@ html, body {
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  padding: 24px 28px;
-  min-width: 420px; max-width: 900px; max-height: 92vh;
+  padding: clamp(14px, 3vw, 24px) clamp(14px, 3.2vw, 28px);
+  /* Ширины были жёсткими, и на экране 390 px панель уезжала за край вместе с
+     кнопкой «Начать поход»: дотянуться до неё было нечем, прокрутки нет. */
+  min-width: min(420px, calc(100vw - 20px));
+  max-width: min(900px, calc(100vw - 20px));
+  max-height: 92vh;
   overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0,0,0,0.6);
 }
-.panel h1 { margin: 0 0 6px; font-size: 34px; color: var(--accent); letter-spacing: 1px; text-align: center; }
-.panel h2 { margin: 0 0 14px; font-size: 22px; color: var(--accent); }
+.panel h1 { margin: 0 0 6px; font-size: clamp(23px, 5.5vw, 34px); color: var(--accent); letter-spacing: 1px; text-align: center; }
+.panel h2 { margin: 0 0 14px; font-size: clamp(18px, 4.4vw, 22px); color: var(--accent); }
 .panel h3 { margin: 12px 0 6px; font-size: 16px; color: var(--accent2); }
 .subtitle { text-align: center; color: var(--muted); margin-bottom: 20px; }
 .menu-buttons { display: flex; flex-direction: column; gap: 10px; align-items: stretch; }
@@ -76,7 +84,15 @@ button.primary:hover { background: #5a4520; }
 button.small { font-size: 13px; padding: 5px 10px; }
 .row { display: flex; gap: 12px; align-items: center; }
 .row.between { justify-content: space-between; }
-.footer-row { margin-top: 18px; display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+/* Ряд действий липнет ко дну панели: на коротком экране выбор героя занимает
+   больше тысячи пикселей, и кнопка «Начать поход» иначе лежит в самом низу
+   прокрутки — до неё надо было домотать. */
+.footer-row {
+  margin: 18px -4px -4px; padding: 10px 4px 4px;
+  display: flex; gap: 10px; justify-content: space-between; align-items: center;
+  position: sticky; bottom: -4px;
+  background: linear-gradient(rgba(18,18,26,0), var(--panel) 40%);
+}
 .shards { color: var(--accent2); font-weight: 600; }
 .muted { color: var(--muted); font-size: 13px; }
 .help { color: var(--muted); font-size: 13px; line-height: 1.5; }
@@ -145,7 +161,7 @@ kbd {
 .tab.active { border-color: var(--accent); color: var(--accent); }
 
 /* Inventory */
-.inv-panel { min-width: 720px; }
+.inv-panel { min-width: min(720px, calc(100vw - 20px)); }
 .inv-layout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
 .equip-slots { display: flex; flex-direction: column; gap: 8px; }
 .slot {
@@ -200,3 +216,56 @@ kbd {
 .start-item:hover { border-color: var(--accent); }
 .start-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(212,169,74,0.4); }
 .start-item.locked { opacity: 0.55; }
+
+/* ---------- Узкий экран и палец ---------- */
+/* Панели и сетки должны помещаться в телефон, а всё нажимаемое — быть не меньше
+   44 px: это нижняя граница, на которой палец попадает надёжно. */
+@media (max-width: 760px) {
+  .inv-layout { grid-template-columns: 1fr; }
+  .result-stats { grid-template-columns: 1fr; }
+  .hero-grid { grid-template-columns: repeat(auto-fit, minmax(116px, 1fr)); gap: 8px; }
+  .bag-grid { grid-template-columns: repeat(3, 1fr); }
+  .start-items { grid-template-columns: 1fr; }
+  .upgrade { grid-template-columns: 1fr auto; row-gap: 6px; }
+  .upgrade .pips { grid-column: 1 / -1; }
+}
+@media (pointer: coarse) {
+  button { min-height: 44px; }
+  button.small { min-height: 40px; padding: 8px 14px; }
+  .tab { min-height: 44px; display: flex; align-items: center; }
+  .slot { min-height: 56px; }
+  .bag-slot { min-height: 84px; }
+  .hero-card, .start-item { padding: 14px; }
+  #game { cursor: default; }
+}
+
+/* Подземелье шире, чем высокое: в портрете от него осталась бы полоска. */
+#rotate-hint { display: none; }
+@media (pointer: coarse) and (orientation: portrait) {
+  #rotate-hint {
+    display: flex; position: fixed; inset: 0; z-index: 60;
+    background: var(--bg); align-items: center; justify-content: center;
+    padding: 32px; text-align: center;
+  }
+  #rotate-hint b { display: block; font-size: 22px; color: var(--accent); margin-bottom: 10px; }
+  #rotate-hint span { display: block; color: var(--muted); font-size: 14px; line-height: 1.5; }
+}
+
+/* Ландшафт телефона — это 300-350 px по высоте. Портреты и отступы ужимаем,
+   иначе экран выбора героя разворачивается на четыре экрана прокрутки. */
+@media (max-height: 520px) {
+  .panel { padding: 10px 12px; }
+  .panel h1 { font-size: 20px; margin-bottom: 2px; }
+  .panel h2 { font-size: 17px; margin-bottom: 8px; }
+  .subtitle { margin-bottom: 10px; font-size: 12px; }
+  .hero-grid { gap: 7px; }
+  .hero-card { padding: 8px; }
+  .hero-symbol.hero-art-thumb { height: 64px; }
+  .menu-hero-strip { display: none; }
+  .hero-detail { margin-top: 8px; padding: 8px; }
+  .hero-detail.hero-detail-with-art { min-height: 120px; padding-left: 112px; }
+  .hero-detail-art { width: 94px; left: 8px; top: 8px; bottom: 8px; }
+  .skill-item { font-size: 12px; }
+  .skill-key { min-width: 22px; height: 22px; }
+  .footer-row { margin-top: 10px; }
+}

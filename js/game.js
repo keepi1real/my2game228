@@ -12,7 +12,11 @@ class Input {
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
-    window.addEventListener('blur', () => { this.keys = {}; this.mouse.down = false; });
+    window.addEventListener('blur', () => {
+      this.keys = {}; this.mouse.down = false;
+      // Уход в другое приложение посреди протяжки иначе оставил бы стик зажатым.
+      if (typeof TouchControls !== 'undefined') TouchControls.release();
+    });
     const toCanvas = (e) => {
       const r = canvas.getBoundingClientRect();
       this.mouse.x = (e.clientX - r.left) * (canvas.width / r.width);
@@ -22,6 +26,10 @@ class Input {
     canvas.addEventListener('mousedown', (e) => { toCanvas(e); if (e.button === 0) { this.mouse.down = true; this.mouse.clicked = true; } if (e.button === 2) this.mouse.rdown = true; });
     window.addEventListener('mouseup', (e) => { if (e.button === 0) this.mouse.down = false; if (e.button === 2) this.mouse.rdown = false; });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    // Сенсорный слой включается сам при первом касании: на ноутбуке с тачскрином
+    // накладки не должны появляться до того, как их действительно попросили.
+    this.stick = null;
+    if (typeof TouchControls !== 'undefined') TouchControls.attach(canvas, this);
   }
   down(code) { return !!this.keys[code]; }
   hit(code) { const v = !!this.pressed[code]; this.pressed[code] = false; return v; }
@@ -129,6 +137,7 @@ class Game {
   update(dt) {
     this.time += dt;
     const inp = this.input;
+    if (typeof TouchControls !== 'undefined') TouchControls.applyTo(inp, this);
     if (this.state === 'run') {
       if (inp.hit('Escape')) { this.state = 'paused'; this.ui.showPause(); inp.endFrame(); return; }
       if (inp.hit('KeyI') || inp.hit('Tab')) { this.state = 'inventory'; this.ui.showInventory(); inp.endFrame(); return; }
@@ -169,12 +178,17 @@ class Game {
     if (ad > 4) { p.aim.x = (wx - p.x) / ad; p.aim.y = (wy - p.y) / ad; }
     // Движение.
     let mx = 0, my = 0;
-    if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
-    if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
-    if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
-    if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+    if (inp.stick) {
+      // Стик аналоговый: половина отклонения — половина скорости.
+      mx = inp.stick.x * inp.stick.len; my = inp.stick.y * inp.stick.len;
+    } else {
+      if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
+      if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
+      if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
+      if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
+    }
     const ml = Math.hypot(mx, my);
-    if (ml > 0) { mx /= ml; my /= ml; }
+    if (ml > 1) { mx /= ml; my /= ml; }
     p.vx = mx; p.vy = my;
     if (p.dash) {
       const d = p.dash;
