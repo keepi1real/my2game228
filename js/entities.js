@@ -24,6 +24,7 @@ class Player {
     this.sneak = false;
     this.gold = 0;
     this.swing = 0; this.swingAngle = 0; this.recoil = 0;
+    this.swingFlip = false; this.swingHit = false;
     this.hp = this.maxHp;
   }
   // ---- Статы ----

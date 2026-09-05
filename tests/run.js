@@ -14,7 +14,7 @@ for (const f of ['utils', 'data', 'save', 'dungeon', 'entities']) {
 }
 
 // Верхнеуровневые const/class из скриптов не попадают в объект контекста — вытаскиваем их выражением.
-const NAMES = ['HALL_FLOOR', 'T_CHASM', 'generateGreatHall', 'HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS'];
+const NAMES = ['HALL_FLOOR', 'T_CHASM', 'generateGreatHall', 'HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS', 'MELEE_ARC', 'WINDUP_TRACK', 'enemyReach'];
 Object.assign(ctx, vm.runInContext('({' + NAMES.join(',') + '})', ctx));
 
 let failed = 0;
@@ -144,6 +144,46 @@ check(totalEnemies > 0, 'враги генерируются');
 }
 
 
+// --- Никто не рождается в стене ---
+// Раньше место спавна проверялось по типу тайла, и существо шире тайла — тролль,
+// голем, урук — оказывалось замурованным примерно в половине случаев: ходить не
+// может, добраться до него нечем. Проверка идёт кругом того же радиуса, каким
+// сущность потом двигается.
+{
+  let stuck = 0, total = 0, floorsChecked = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    for (let floor = 1; floor <= ctx.MAX_FLOOR; floor++) {
+      const gen = ctx.generateFloor(floor, seed * 977 + floor);
+      floorsChecked++;
+      for (const e of gen.enemies) {
+        total++;
+        if (gen.map.circleBlocked(e.x, e.y, ctx.MONSTERS[e.type].size)) stuck++;
+      }
+      for (const c of gen.chests) if (gen.map.circleBlocked(c.x, c.y, 14)) stuck++;
+      if (gen.merchant && gen.map.circleBlocked(gen.merchant.x, gen.merchant.y, 14)) stuck++;
+      if (gen.boss) {
+        const bdef = ctx.BOSSES[gen.boss.id];
+        if (gen.map.circleBlocked(gen.boss.x, gen.boss.y, bdef.size)) stuck++;
+      }
+    }
+  }
+  check(floorsChecked === 120 * ctx.MAX_FLOOR, 'проверены все этажи');
+  check(total > 15000, `слишком мало врагов в выборке: ${total}`);
+  check(stuck === 0, `${stuck} существ и объектов заспавнены в стене`);
+}
+
+// --- Показанная зона удара совпадает с бьющей ---
+// Дуга и досягаемость живут одной парой констант: если развести их по разным
+// местам, телеграф снова начнёт врать.
+{
+  check(ctx.MELEE_ARC > 0 && ctx.MELEE_ARC < Math.PI, 'сектор удара в разумных пределах');
+  check(ctx.WINDUP_TRACK > 0 && ctx.WINDUP_TRACK < 1, 'окно фиксации замаха — доля замаха');
+  for (const [k, m] of Object.entries(ctx.MONSTERS)) {
+    if (m.ranged) continue;
+    const reach = ctx.enemyReach(m, 12);
+    check(reach > m.size, `${k}: досягаемость удара меньше собственного радиуса`);
+  }
+}
 
 if (failed) { console.error(`\n${failed} проверок провалено`); process.exit(1); }
 console.log('Все проверки пройдены.');

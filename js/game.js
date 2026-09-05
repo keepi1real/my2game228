@@ -44,7 +44,7 @@ class Game {
     this.player = null; this.hero = null; this.floor = 0; this.map = null;
     this.enemies = []; this.projectiles = []; this.pickups = []; this.particles = []; this.texts = []; this.effects = [];
     this.chests = []; this.merchant = null; this.boss = null; this.stairs = null; this.stairsOpen = true;
-    this.camera = { x: 0, y: 0 }; this.shake = 0; this.flash = 0; this.messages = [];
+    this.camera = { x: 0, y: 0 }; this.shake = 0; this.flash = 0; this.hitStop = 0; this.messages = [];
     this.runStats = { kills: 0, shards: 0, gold: 0, bossKills: 0, floor: 1, time: 0, items: 0, levels: 0 };
     this.flow = null; this.flowTimer = 0; this.banner = null; this.transition = 0; this.bagFullTimer = 0;
   }
@@ -133,11 +133,16 @@ class Game {
       if (inp.hit('Escape')) { this.state = 'paused'; this.ui.showPause(); inp.endFrame(); return; }
       if (inp.hit('KeyI') || inp.hit('Tab')) { this.state = 'inventory'; this.ui.showInventory(); inp.endFrame(); return; }
       this.runStats.time += dt;
-      this.updatePlayer(dt);
-      this.updateEnemies(dt);
-      this.updateProjectiles(dt);
-      this.updatePickups(dt);
-      this.updateWorld(dt);
+      // Хит-стоп: на весомом попадании мир замирает на несколько кадров, а тряска,
+      // цифры и вспышка продолжают идти — от этого удар и получает вес.
+      if (this.hitStop > 0) { this.hitStop -= dt; }
+      else {
+        this.updatePlayer(dt);
+        this.updateEnemies(dt);
+        this.updateProjectiles(dt);
+        this.updatePickups(dt);
+        this.updateWorld(dt);
+      }
     } else if (this.state === 'paused') {
       if (inp.hit('Escape')) { this.state = 'run'; this.ui.hide(); }
     } else if (this.state === 'inventory') {
@@ -146,7 +151,9 @@ class Game {
       if (inp.hit('Escape') || inp.hit('KeyE')) { this.state = 'run'; this.ui.hide(); }
     }
     this.updateEffects(dt);
-    inp.endFrame();
+    // На замороженном кадре нажатия не гасим, иначе умение, нажатое в эти
+    // полсотни миллисекунд, пропадёт вместе с кадром.
+    if (!(this.state === 'run' && this.hitStop > 0)) inp.endFrame();
   }
 
   // ---------- Игрок ----------
@@ -240,6 +247,7 @@ class Game {
     if (atk.type === 'melee') {
       const a = Math.atan2(p.aim.y, p.aim.x);
       p.swing = 0.14; p.swingAngle = a; p.swingRange = atk.range; p.swingArc = atk.arc;
+      p.swingFlip = !p.swingFlip;   // соседние удары идут навстречу друг другу — видно, что это связка
       let hitAny = false;
       for (const e of this.enemies) {
         if (!e.alive) continue;
@@ -249,7 +257,9 @@ class Game {
         this.hitEnemy(e, p.damage() * mult, { knockback: 140 });
         hitAny = true;
       }
-      if (!hitAny) this.effects.push({ type: 'miss', x: p.x, y: p.y, time: 0.1 });
+      // Промах виден по самой проводке: она идёт тусклой и без заливки.
+      // Отдельная метка не нужна, а прежняя ('miss') не рисовалась вообще никогда.
+      p.swingHit = hitAny;
     } else {
       this.spawnProjectile({ x: p.x + p.aim.x * 10, y: p.y + p.aim.y * 10, vx: p.aim.x * atk.speed, vy: p.aim.y * atk.speed, dmg: p.damage() * mult, owner: 'player', size: atk.size, color: atk.color, life: 1.2 });
     }
@@ -295,6 +305,9 @@ class Game {
     this.burst(p.x, p.y, opts.color || '#fff', 18, radius * 1.5);
   }
   spawnProjectile(o) { this.projectiles.push(new Projectile(o)); }
+  // Заморозка ограничена сверху: в свалке из десятка врагов сумма отдельных
+  // хит-стопов иначе превратилась бы в тормоза.
+  freeze(t) { this.hitStop = Math.min(0.1, Math.max(this.hitStop, t)); }
   flashScreen(v) { this.flash = Math.max(this.flash, v); }
 
   // ---------- Урон ----------
@@ -307,13 +320,17 @@ class Game {
     dmg = Math.round(dmg);
     e.hp -= dmg; e.hitFlash = 0.12;
     if (e.state === 'idle') { e.state = 'chase'; e.target = p; e.memory = 4; }
-    this.addText(e.x + R.float(-10, 10), e.y - e.r - 6, String(dmg) + (crit ? '!' : ''), crit ? '#ffd54f' : '#ffffff', crit ? 1.3 : 1);
+    // Размер цифры — по доле снятого здоровья: царапина и половина полосы
+    // больше не выглядят одинаково.
+    const sev = clamp(dmg / Math.max(1, e.maxHp), 0, 1);
+    this.addText(e.x + R.float(-10, 10), e.y - e.r - 6, String(dmg) + (crit ? '!' : ''), crit ? '#ffd54f' : '#ffffff', (crit ? 1.3 : 1) * (0.85 + sev * 0.9));
+    if (crit || sev > 0.22) this.freeze(crit ? 0.06 : 0.045);
     if (opts.knockback && !e.isBoss) { const a = angleTo(p.x, p.y, e.x, e.y); e.kx += Math.cos(a) * opts.knockback; e.ky += Math.sin(a) * opts.knockback; }
     if (opts.stun && !e.isBoss) e.stun = Math.max(e.stun, opts.stun);
     if (opts.stun && e.isBoss) e.stun = Math.max(e.stun, opts.stun * 0.3);
     if (p.lifesteal() > 0) p.hp = Math.min(p.maxHp, p.hp + dmg * p.lifesteal());
     this.burst(e.x, e.y, e.def.color, 4, 60);
-    if (e.hp <= 0) this.killEnemy(e);
+    if (e.hp <= 0) { this.freeze(e.isBoss ? 0.12 : 0.07); this.killEnemy(e); }
   }
   damagePlayer(amount, source) {
     const p = this.player;
@@ -324,6 +341,7 @@ class Game {
     if (amount <= 0) return;
     p.hp -= amount; p.hurtFlash = 0.15; p.invulnTime = Math.max(p.invulnTime, 0.12);
     this.shake = Math.max(this.shake, Math.min(10, amount / 4 + 2));
+    if (amount > p.maxHp * 0.12) this.freeze(0.06);
     this.addText(p.x + R.float(-8, 8), p.y - 18, '-' + amount, '#e05a4a', 1.1);
     this.burst(p.x, p.y, '#e05a4a', 6, 70);
     if (p.hp <= 0) this.playerDie(source && source.def ? source.def.name : 'неизвестность');
@@ -420,6 +438,13 @@ class Game {
     }
     if (e.state === 'windup') {
       e.windup -= dt;
+      // Враг доворачивается за игроком лишь в начале замаха, дальше направление
+      // заморожено (см. WINDUP_TRACK). Момент фиксации и есть окно для ухода:
+      // стоящего на месте бьёт всегда, шагнувшего вбок — уже нет.
+      if (!def.ranged && e.windup > def.windup * WINDUP_TRACK) {
+        const dd = dist(e.x, e.y, p.x, p.y) || 1;
+        e.windupDir = { x: (p.x - e.x) / dd, y: (p.y - e.y) / dd };
+      }
       if (e.windup <= 0) { this.enemyAttack(e); e.state = 'chase'; }
       return;
     }
@@ -474,13 +499,22 @@ class Game {
     const d = dist(p.x, p.y, e.x, e.y);
     if (def.ranged) {
       const a = angleTo(e.x, e.y, p.x, p.y);
-      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
+      this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * def.projSpeed, vy: Math.sin(a) * def.projSpeed, dmg: e.dmg, owner: 'enemy', src: e, size: 5, color: def.projColor || '#ffb74d', life: 2.2, slow: def.slow || 0 });
     } else {
-      this.effects.push({ type: 'slash', x: e.x, y: e.y, angle: Math.atan2(e.windupDir.y, e.windupDir.x), r: def.attackRange + 6, time: 0.15, color: def.color });
-      if (d <= def.attackRange + p.r + 10) {
+      const swingA = Math.atan2(e.windupDir.y, e.windupDir.x);
+      const arc = def.attackArc || MELEE_ARC;
+      this.effects.push({ type: 'slash', x: e.x, y: e.y, angle: swingA, r: enemyReach(def, p.r), time: 0.15, color: def.color, arc });
+      // Бьёт только сектор, который был показан на замахе. Раньше урон считался
+      // по одной дистанции, и уход врагу за спину не спасал.
+      const inArc = Math.abs(angleDiff(swingA, angleTo(e.x, e.y, p.x, p.y))) <= arc / 2 + Math.asin(Math.min(1, p.r / Math.max(d, 1)));
+      if (d <= enemyReach(def, p.r) && inArc) {
         this.damagePlayer(e.dmg, e);
         if (def.poison) { p.poison = def.poison * (1 + this.floor * 0.1); p.poisonTime = 4; }
         if (def.knockback) { const a = angleTo(e.x, e.y, p.x, p.y); this.moveEntity(p, Math.cos(a) * def.knockback * 0.25, Math.sin(a) * def.knockback * 0.25); }
+      } else {
+        // Промах врага — окно для ответа: он открыт, пока переступает.
+        e.stun = Math.max(e.stun, e.isBoss ? 0.12 : 0.3);
+        this.addText(e.x, e.y - e.r - 6, 'мимо', '#90a4ae', 0.85);
       }
     }
   }
@@ -496,7 +530,7 @@ class Game {
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, 'goblin', 3); return false; }
     } else if (e.def.id === 'morgul') {
       if (e.abilityTimers.blink <= 0 && d > 160) { e.abilityTimers.blink = ab.blink; this.blinkBoss(e); return false; }
-      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
+      if (e.abilityTimers.volley <= 0 && los) { e.abilityTimers.volley = ab.volley; const base = angleTo(e.x, e.y, p.x, p.y); for (let i = -2; i <= 2; i++) { const a = base + i * 0.22; this.spawnProjectile({ x: e.x, y: e.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, dmg: e.dmg * 0.7, owner: 'enemy', src: e, size: 6, color: '#7e57c2', life: 2.5, slow: 1.5 }); } return false; }
       if (e.abilityTimers.scream <= 0 && d < 220) { e.abilityTimers.scream = ab.scream; e.telegraph = { type: 'circle', x: e.x, y: e.y, r: 210, time: 0.8, total: 0.8, dmgMult: 0.9, slow: 3 }; return true; }
       if (e.abilityTimers.summon <= 0) { e.abilityTimers.summon = ab.summon; this.summonMinions(e, e.phase === 2 ? 'shadow' : 'wraith', 2); return false; }
     }
@@ -528,7 +562,7 @@ class Game {
       for (let t = 0; t < 10; t++) {
         const a = R.float(0, 6.28), rr = R.float(50, 110);
         const x = e.x + Math.cos(a) * rr, y = e.y + Math.sin(a) * rr;
-        if (!this.map.circleBlocked(x, y, 14)) { const m = new Enemy(type, x, y, this.floor); m.state = 'chase'; m.memory = 6; this.enemies.push(m); this.burst(x, y, MONSTERS[type].color, 8, 80); break; }
+        if (!this.map.circleBlocked(x, y, MONSTERS[type].size)) { const m = new Enemy(type, x, y, this.floor); m.state = 'chase'; m.memory = 6; this.enemies.push(m); this.burst(x, y, MONSTERS[type].color, 8, 80); break; }
       }
     }
   }
@@ -566,7 +600,7 @@ class Game {
           }
         } else if (dist(pr.x, pr.y, p.x, p.y) < p.r + pr.size) {
           pr.dead = true;
-          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
+          if (p.invulnTime <= 0) { this.damagePlayer(pr.dmg, pr.src || null); if (pr.slow) p.slowTime = Math.max(p.slowTime, pr.slow); }
           break;
         }
       }

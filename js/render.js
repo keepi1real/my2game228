@@ -175,6 +175,45 @@ class Renderer {
       else if (t.type === 'charge') { ctx.translate(e.x, e.y); ctx.rotate(t.angle); ctx.fillStyle = '#ff5252'; ctx.fillRect(0, -e.r, t.len * k, e.r * 2); ctx.globalAlpha = 0.7; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.strokeRect(0, -e.r, t.len, e.r * 2); }
       ctx.restore();
     }
+    this.drawWindups();
+  }
+  // Замах: показываем ровно ту зону, которая ударит, и ровно в тот момент,
+  // когда враг перестал доворачиваться. Заливка растёт по радиусу и достаёт
+  // до кромки в кадр удара — «докрасило до тебя, значит попал».
+  drawWindups() {
+    const ctx = this.ctx, p = this.g.player;
+    for (const e of this.g.enemies) {
+      if (e.state !== 'windup' || !e.alive || !this.visibleAt(e.x, e.y)) continue;
+      const def = e.def, total = def.windup || 0.001;
+      const k = clamp(1 - e.windup / total, 0, 1);
+      const locked = e.windup <= total * WINDUP_TRACK;
+      const a = Math.atan2(e.windupDir.y, e.windupDir.x);
+      ctx.save();
+      ctx.translate(e.x, e.y);
+      if (def.ranged) {
+        // Стрелок целится по линии: важен только луч, а не зона.
+        const len = Math.min(def.attackRange, 420);
+        ctx.rotate(a);
+        ctx.globalAlpha = locked ? 0.75 : 0.3;
+        ctx.strokeStyle = '#ff5252'; ctx.lineWidth = locked ? 2 : 1;
+        ctx.setLineDash(locked ? [] : [6, 6]);
+        ctx.beginPath(); ctx.moveTo(e.r, 0); ctx.lineTo(e.r + len * (0.35 + 0.65 * k), 0); ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        const arc = def.attackArc || MELEE_ARC;
+        const reach = enemyReach(def, p.r);
+        const wedge = (radius) => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, radius, a - arc / 2, a + arc / 2); ctx.closePath(); };
+        ctx.fillStyle = '#ff5252';
+        ctx.globalAlpha = locked ? 0.2 : 0.11;
+        wedge(reach); ctx.fill();
+        ctx.globalAlpha = locked ? 0.42 : 0.22;
+        wedge(reach * k); ctx.fill();
+        ctx.globalAlpha = locked ? 0.9 : 0.35;
+        ctx.strokeStyle = '#ff5252'; ctx.lineWidth = locked ? 2.5 : 1;
+        wedge(reach); ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
   drawEnemies() {
     const ctx = this.ctx, g = this.g;
@@ -195,7 +234,6 @@ class Renderer {
         if (spriteW) { ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(e.x, e.y, radius * 1.15, radius * 0.5, 0, 0, Math.PI * 2); ctx.fill(); }
         else drawShape(ctx, def.shape, e.x, e.y, radius, color, angle);
       };
-      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; marker(e.r + 4 + k * 6, '#ff5252'); ctx.restore(); }
       if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; marker(e.r + 10, e.phase === 2 ? '#ff1744' : def.color); ctx.restore(); }
       if (!this.drawArt(group, artId, e, e.r, color)) {
         drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
@@ -217,12 +255,55 @@ class Renderer {
     const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
     const spriteW = this.spriteWidth('heroes', hero.id);
     this.drawShadow(p.x, spriteW ? p.y : p.y + 10, spriteW || 32);
+    // Шлейф переката. Тело во время рывка не мигает — мигание там читалось бы
+    // как стробоскоп, — поэтому неуязвимость несут шлейф и кольцо под ногами.
+    if (p.dash) {
+      // Копии по росту силуэта, а не кружки под ногами: смазанная фигура читается
+      // как рывок, пятно на полу — как мусор.
+      const bodyH = Math.max(p.r, p.y - this.bodyTop('heroes', hero.id, p, p.r));
+      for (let i = 1; i <= 4; i++) {
+        const f = i / 4;
+        const gx = p.x - p.dash.vx * f * 0.055, gy = p.y - p.dash.vy * f * 0.055;
+        ctx.save(); ctx.globalAlpha = 0.4 * (1 - f * 0.7); ctx.fillStyle = hero.color;
+        ctx.beginPath(); ctx.ellipse(gx, gy - bodyH * 0.45, p.r * (1 - f * 0.3), bodyH * 0.45 * (1 - f * 0.25), 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+      }
+    }
+    // Кольцо неуязвимости: главный защитный ресурс должен быть виден,
+    // откуда бы кадры неуязвимости ни пришли — с переката или с умения.
+    if (p.invulnTime > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.5 + 0.35 * Math.sin(g.time * 24);
+      ctx.strokeStyle = '#e8f1ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 5, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
     // Взмах.
     if (p.swing > 0) {
-      const k = p.swing / 0.14;
-      ctx.save(); ctx.globalAlpha = 0.6 * k; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.stroke();
-      ctx.globalAlpha = 0.18 * k; ctx.fillStyle = hero.color; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.swingRange, p.swingAngle - p.swingArc / 2, p.swingAngle + p.swingArc / 2); ctx.closePath(); ctx.fill();
+      // Клинок проходит дугу за время взмаха, а не вспыхивает весь сразу.
+      // Соседние удары идут навстречу, а несвязавшийся взмах остаётся тусклым
+      // и без заливки — промах видно, даже если цель за спиной.
+      const t = clamp(1 - p.swing / 0.14, 0, 1);
+      const half = p.swingArc / 2, s0 = p.swingFlip ? half : -half;
+      const dir = p.swingFlip ? -1 : 1;
+      const cur = p.swingAngle + s0 + dir * p.swingArc * t;
+      const tail = p.swingAngle + s0 + dir * p.swingArc * Math.max(0, t - 0.5);
+      const lo = Math.min(tail, cur), hi = Math.max(tail, cur);
+      const hit = p.swingHit;
+      ctx.save();
+      if (hit) {
+        ctx.globalAlpha = 0.2; ctx.fillStyle = hero.color;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.arc(p.x, p.y, p.swingRange, lo, hi); ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = hit ? 0.85 : 0.3;
+      ctx.strokeStyle = hit ? '#ffffff' : '#9aa0a6'; ctx.lineWidth = hit ? 3.5 : 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.swingRange, lo, hi); ctx.stroke();
+      // Само лезвие на текущем угле — по нему читается, докуда дошла проводка.
+      ctx.globalAlpha = hit ? 0.9 : 0.35; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x + Math.cos(cur) * p.r, p.y + Math.sin(cur) * p.r);
+      ctx.lineTo(p.x + Math.cos(cur) * p.swingRange, p.y + Math.sin(cur) * p.swingRange);
+      ctx.stroke();
       ctx.restore();
     }
     if (p.shield > 0) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#c77dff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
@@ -237,15 +318,31 @@ class Renderer {
       ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
     }
     // Указатель прицела.
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * (p.r + 9), p.y + p.aim.y * (p.r + 9)); ctx.stroke();
+    // Прицел заодно сообщает готовность удара: на перезарядке он короткий и тусклый,
+    // иначе клик в перезарядку не даёт вообще никакого ответа.
+    const ready = p.attackTimer <= 0 && p.stunTime <= 0 && !p.dash;
+    ctx.strokeStyle = ready ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = ready ? 2.5 : 1.5;
+    const tip = p.r + (ready ? 11 : 6);
+    ctx.beginPath(); ctx.moveTo(p.x + p.aim.x * (p.r + 2), p.y + p.aim.y * (p.r + 2)); ctx.lineTo(p.x + p.aim.x * tip, p.y + p.aim.y * tip); ctx.stroke();
     ctx.restore();
     const top = this.bodyTop('heroes', hero.id, p, p.r);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '11px sans-serif';
+    // Все состояния одной строкой над головой: раньше значки стояли по фиксированным
+    // местам и налезали друг на друга, а замедление и оглушение не показывались вовсе.
+    const marks = [];
     for (const b of p.buffs) {
-      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.fillText('▲', p.x - 12, top - 8); }
-      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.fillText('▣', p.x + 12, top - 8); }
+      if (b.stat === 'dmg') marks.push(['▲', '#ffd54f']);
+      else if (b.stat === 'armor') marks.push(['▣', '#bdbdbd']);
+      else if (b.stat === 'invisible') marks.push(['◌', '#b0bec5']);
     }
-    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.fillText('☠', p.x, top - 10); }
+    if (p.poisonTime > 0) marks.push(['☠', '#ab47bc']);
+    if (p.slowTime > 0) marks.push(['❄', '#4fc3f7']);
+    if (p.stunTime > 0) marks.push(['✶', '#ffd54f']);
+    if (marks.length) {
+      const step = 13, x0 = p.x - (marks.length - 1) * step / 2;
+      for (let i = 0; i < marks.length; i++) { ctx.fillStyle = marks[i][1]; ctx.fillText(marks[i][0], x0 + i * step, top - 9); }
+    }
   }
   // Точки расширения для визуального слоя (js/visual-assets.js).
   // Без него обе возвращают пустоту, и рендер остаётся полностью геометрическим.
@@ -281,7 +378,8 @@ class Renderer {
     const ctx = this.ctx;
     for (const ef of this.g.effects) {
       if (ef.type === 'ring') { const k = 1 - ef.time / ef.max; ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = ef.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-      else if (ef.type === 'slash') { ctx.save(); ctx.globalAlpha = ef.time / 0.15; ctx.strokeStyle = ef.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, ef.angle - 0.6, ef.angle + 0.6); ctx.stroke(); ctx.restore(); }
+      // Росчерк врага повторяет сектор его же замаха: показанное и ударившее совпадают.
+      else if (ef.type === 'slash') { const h = (ef.arc || 1.2) / 2; ctx.save(); ctx.globalAlpha = ef.time / 0.15; ctx.strokeStyle = ef.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, ef.angle - h, ef.angle + h); ctx.stroke(); ctx.restore(); }
     }
   }
   drawParticles() {

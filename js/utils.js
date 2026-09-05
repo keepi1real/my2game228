@@ -3,6 +3,15 @@
 
 const TILE = 32;
 const RECOIL_TIME = 0.14; // длительность выпада при атаке, общая для взмаха и выстрела
+// Сектор ближнего удара врага. Одно число на замах, телеграф и расчёт попадания:
+// показанная опасная зона и бьющая зона обязаны совпадать, иначе уклонение — лотерея.
+const MELEE_ARC = Math.PI * 0.5;
+// Доля замаха, в течение которой враг ещё доворачивается за игроком. Дальше
+// направление заморожено — это и есть момент, в который уклонение срабатывает.
+const WINDUP_TRACK = 0.65;
+// Досягаемость ближнего удара врага, от центра к центру. Держим в одном месте:
+// по ней и считается попадание, и рисуется опасная зона.
+function enemyReach(def, targetR) { return def.attackRange + targetR + 10; }
 const VIEW_W = 1024;
 const VIEW_H = 640;
 
@@ -72,4 +81,4 @@ function lineOfSight(map, x0, y0, x1, y1) {
   return false;
 }
 
-if (typeof module !== 'undefined') module.exports = { RNG, clamp, lerp, dist, angleTo, angleDiff, lineOfSight, TILE };
+if (typeof module !== 'undefined') module.exports = { RNG, clamp, lerp, dist, angleTo, angleDiff, lineOfSight, TILE, MELEE_ARC, WINDUP_TRACK, enemyReach };

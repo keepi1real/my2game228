@@ -136,7 +136,7 @@ function generateRooms(floor, rng) {
   for (let i = 0; i < totalEnemies; i++) {
     const r = rng.pick(middle);
     const type = rng.weighted(pool, (k) => MONSTERS[k].weight * (MONSTERS[k].minFloor >= floor - 1 ? 1.5 : 1));
-    const pos = randomFloorInRoom(map, r, rng);
+    const pos = randomFloorInRoom(map, r, rng, MONSTERS[type].size);
     if (!pos) continue;
     enemies.push({ type, x: pos.x, y: pos.y });
   }
@@ -146,7 +146,7 @@ function generateRooms(floor, rng) {
   const chestCount = rng.int(1, 2) + (rng.chance(0.3) ? 1 : 0);
   for (let i = 0; i < chestCount; i++) {
     const r = rng.pick(middle);
-    const pos = randomFloorInRoom(map, r, rng);
+    const pos = randomFloorInRoom(map, r, rng, 14);
     if (pos) chests.push(pos);
   }
 
@@ -155,7 +155,7 @@ function generateRooms(floor, rng) {
   if (MERCHANT_FLOORS.includes(floor)) {
     const candidates = middle.filter((r) => r !== last);
     const r = rng.pick(candidates.length ? candidates : middle);
-    const pos = randomFloorInRoom(map, r, rng);
+    const pos = randomFloorInRoom(map, r, rng, 14);
     if (pos) merchant = pos;
   }
   return { map, spawn, stairs, enemies, chests, merchant, boss: null };
@@ -239,23 +239,26 @@ function generateGreatHall(floor, rng) {
   // Орка сюда не берём: у него нет спрайта, и красный квадрат рядом со всеми остальными выбивается.
   const pool = ['goblin', 'goblin', 'goblin', 'archer', 'bat'];
   const enemies = [];
-  const spot = (room) => randomFloorInRoom(map, room, rng);
+  const spot = (room, radius) => randomFloorInRoom(map, room, rng, radius);
+  const spotFor = (room, type) => spot(room, MONSTERS[type].size);
   for (let i = 0; i < 14; i++) {
-    const pos = spot(map.rooms[1]);
-    if (pos) enemies.push({ type: rng.pick(pool), x: pos.x, y: pos.y });
+    const type = rng.pick(pool);
+    const pos = spotFor(map.rooms[1], type);
+    if (pos) enemies.push({ type, x: pos.x, y: pos.y });
   }
   for (let i = 0; i < 5; i++) {
-    const pos = spot(map.rooms[2]);
-    if (pos) enemies.push({ type: rng.pick(['goblin', 'archer', 'uruk']), x: pos.x, y: pos.y });
+    const type = rng.pick(['goblin', 'archer', 'uruk']);
+    const pos = spotFor(map.rooms[2], type);
+    if (pos) enemies.push({ type, x: pos.x, y: pos.y });
   }
-  const trollAt = spot(map.rooms[2]);
+  const trollAt = spotFor(map.rooms[2], 'troll');
   if (trollAt) enemies.push({ type: 'troll', x: trollAt.x, y: trollAt.y });
 
   // Сундук в усыпальнице — то, за чем сюда вообще спускаются.
   const chests = [];
   const tombChest = { x: (TOMB.x + 4 + 0.5) * TILE, y: (TOMB.y + 4 + 0.5) * TILE };
   chests.push(tombChest);
-  const hallChest = spot(map.rooms[1]);
+  const hallChest = spot(map.rooms[1], 14);
   if (hallChest) chests.push(hallChest);
 
   return {
@@ -277,12 +280,22 @@ function carveCorridor(map, a, b, rng) {
   if (horizontalFirst) { stepX(); stepY(); } else { stepY(); stepX(); }
 }
 
-function randomFloorInRoom(map, r, rng) {
-  for (let i = 0; i < 20; i++) {
+// Свободная точка в комнате под существо заданного радиуса.
+// Проверять один тайл недостаточно: тролль шире тайла и, встав в центр
+// клетки у стены, оказывается замурованным — ходить не может, бить его
+// нечем. Поэтому мерим кругом того же радиуса, каким сущность потом ходит.
+function randomFloorInRoom(map, r, rng, radius = 0) {
+  const fits = (x, y) => map.get(x, y) === T_FLOOR && !map.circleBlocked((x + 0.5) * TILE, (y + 0.5) * TILE, radius);
+  for (let i = 0; i < 40; i++) {
     const x = rng.int(r.x, r.x + r.w - 1), y = rng.int(r.y, r.y + r.h - 1);
-    if (map.get(x, y) === T_FLOOR) return { x: (x + 0.5) * TILE, y: (y + 0.5) * TILE };
+    if (fits(x, y)) return { x: (x + 0.5) * TILE, y: (y + 0.5) * TILE };
   }
-  return null;
+  // Случайные пробы могли не найти просвет в тесной комнате — проходим её целиком.
+  const spots = [];
+  for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (fits(x, y)) spots.push({ x, y });
+  if (!spots.length) return null;
+  const s = rng.pick(spots);
+  return { x: (s.x + 0.5) * TILE, y: (s.y + 0.5) * TILE };
 }
 
 function placeTorches(map, rng) {
