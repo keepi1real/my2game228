@@ -6,7 +6,7 @@
 // Поднимите CACHE после правок в js/, css/ или assets/, иначе у уже установивших
 // игру останется старая версия: старые кэши удаляются в activate по имени.
 
-const CACHE = 'undermountain-expedition-v11-r2';
+const CACHE = 'undermountain-expedition-v11-r3';
 
 // Оболочка и все обязательные изображения входят в начальный кэш,
 // чтобы после первого запуска каждый из восьми этажей был доступен без сети.
@@ -143,6 +143,23 @@ self.addEventListener('fetch', (e) => {
         if (shell) return shell;
         throw err;
       }
+    }
+
+    // Код — из сети, если она есть. Раньше здесь был кэш-первый для всего, и
+    // после выкладки браузер смешивал файлы двух версий: js/ui.js отдавался
+    // старый из кэша, а нового js/audio-hooks.js в том кэше не было, и он
+    // приезжал свежим. Новый код звал метод, которого в старом файле нет, —
+    // игра падала на паузе. Картинки и звук остаются кэш-первыми: они тяжёлые
+    // и меняются вместе с именем кэша.
+    const isCode = /\.(?:js|css|html|json|webmanifest)$/.test(url.pathname);
+    if (isCode) {
+      let res = null;
+      try { res = await fetch(req); } catch (err) { /* сети нет */ }
+      if (res && res.ok) { (await caches.open(CACHE)).put(req, res.clone()); return res; }
+      const cached = await caches.match(req);
+      if (cached) return cached;
+      if (res) return res;          // сеть ответила 404 — отдаём как есть, второй раз не ходим
+      throw new Error('offline and not cached: ' + url.pathname);
     }
 
     const hit = await caches.match(req);

@@ -145,24 +145,6 @@ class UI {
   }
 
   // ---------- Пауза ----------
-  // Ползунки громкости. Значение пишется сразу и переживает перезагрузку:
-  // Sound.setVolume сам кладёт его в localStorage.
-  volumeHtml() {
-    const s = Sound.settings;
-    const row = (id, name) => `
-      <label class="vol-row"><span>${name}</span>
-        <input type="range" min="0" max="100" value="${Math.round(s[id] * 100)}" data-vol="${id}">
-        <span class="vol-num" data-num="${id}">${Math.round(s[id] * 100)}</span></label>`;
-    return `<div class="volumes">${row('master', 'Звук')}${row('music', 'Музыка')}${row('sfx', 'Эффекты')}</div>`;
-  }
-  bindVolumes() {
-    this.bind('[data-vol]', 'input', (el) => {
-      const id = el.getAttribute('data-vol');
-      Sound.setVolume(id, el.value / 100);
-      const num = this.root.querySelector(`[data-num="${id}"]`);
-      if (num) num.textContent = el.value;
-    });
-  }
   showPause() {
     this.render(`
       <div class="overlay"><div class="panel">
