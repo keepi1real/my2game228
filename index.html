@@ -66,21 +66,10 @@
   <script>
     // Только по http(s): по file:// регистрация выбрасывает исключение,
     // а двойной клик по index.html должен работать по-прежнему.
-    //
-    // На localhost — не регистрируем. Service worker отдаёт js и css из кэша, и
-    // во время разработки правка файла молча не доезжает до страницы: выглядит
-    // как «код не работает», а на деле браузер показывает вчерашнюю копию.
-    // Проверять офлайн и установку нужно на боевом адресе или по IP в локальной
-    // сети — там регистрация по-прежнему идёт.
-    const devHost = ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname);
-    if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !devHost) {
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
       });
-    } else if ('serviceWorker' in navigator && devHost) {
-      // Снимаем worker, зарегистрированный до этой правки: иначе он продолжит
-      // отдавать старые файлы, и отключение ничего бы не изменило.
-      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
     }
   </script>
 </body>

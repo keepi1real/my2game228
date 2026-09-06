@@ -41,6 +41,7 @@ css = inlineAssets(css);
 // Звук ищется по вычисляемому пути ('assets/sfx/' + id), поэтому регулярка выше
 // его не видит. Собираем содержимое двух папок в карту, из которой автономный
 // файл читает по data:-ссылке. Пока папок нет, карта пустая и звук синтезируется.
+require('./audio-index.js').build(root);   // список не должен расходиться с папками
 const AUDIO_MIME = { '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav' };
 const audio = {};
 for (const dir of ['assets/music', 'assets/sfx']) {

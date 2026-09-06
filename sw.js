@@ -25,6 +25,7 @@ const SHELL = [
   './js/data.js',
   './js/save.js',
   './js/audio.js',
+  './assets/audio.json',
   './js/dungeon.js',
   './js/entities.js',
   './js/render.js',

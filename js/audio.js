@@ -88,6 +88,7 @@ const Sound = {
     this.master.connect(this.ctx.destination);
     this.applyVolumes();
     this.noise = this.makeNoise();
+    this.loadIndex();
     this.ctx.resume().catch(() => {});
     // Музыку, заказанную до первого клика, включаем теперь.
     if (this.wanted) { const id = this.wanted; this.wanted = null; this.play_music(id, 0.6); }
@@ -210,13 +211,13 @@ const Sound = {
     // рецепт. Поэтому положить skill_fireball.mp3 достаточно — правок не нужно.
     const own = this.buffers.get(id);
     if (own) { this.playBuffer(own, t, vol, rate); return; }
-    if (!this.synthOnly.has(id)) this.fetchSfx(id);
+    this.fetchSfx(id);
 
     const base = this.alias[id] || id;
     if (base !== id) {
       const shared = this.buffers.get(base);
       if (shared) { this.playBuffer(shared, t, vol, rate); return; }
-      if (!this.synthOnly.has(base)) this.fetchSfx(base);
+      this.fetchSfx(base);
     }
     const r = this.recipes[base];
     if (!r) return;
@@ -234,24 +235,48 @@ const Sound = {
     src.onended = () => { this.voices--; };
   },
 
+  // ---------- Список доступных записей ----------
+  // За звуком в сеть ходим только если он есть в assets/audio.json. Иначе каждый
+  // отсутствующий эффект давал бы 404 в консоли, а их тут десятки: браузерная
+  // проверка «ошибок в консоли нет» ловит это совершенно справедливо.
+  // Список пересобирает node tools/audio-index.js — и обе сборки делают это сами.
+  index: null,
+  indexTried: false,
+  loadIndex() {
+    if (this.indexTried) return;
+    this.indexTried = true;
+    // В автономном файле сети нет вовсе: список берём из вшитых записей.
+    if (window.AUDIO_ASSETS) {
+      const idx = { music: {}, sfx: {} };
+      for (const key of Object.keys(window.AUDIO_ASSETS)) {
+        const m = key.match(/^assets\/(music|sfx)\/(.+)$/);
+        if (m) idx[m[1]][m[2]] = 'packed';
+      }
+      this.index = idx;
+      return;
+    }
+    fetch('assets/audio.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { this.index = j && j.sfx ? j : { music: {}, sfx: {} }; })
+      .catch(() => { this.index = { music: {}, sfx: {} }; });
+  },
+
   // ---------- Загрузка записей ----------
-  // Один заход за id: не нашли — id уходит в synthOnly и больше не беспокоит сеть.
-  fetchSfx(id) { this.fetchAudio(id, 'assets/sfx/' + id, (buf) => this.buffers.set(id, buf)); },
-  fetchAudio(id, base, done) {
-    if (this.loading.has(id) || this.synthOnly.has(id)) return;
-    this.loading.add(id);
-    // В автономном файле сети нет: tools/bundle.js кладёт записи в AUDIO_ASSETS
-    // как data:-ссылки, и берём мы их оттуда по тому же пути без расширения.
+  fetchSfx(id) { this.fetchAudio('sfx', id, (buf) => this.buffers.set(id, buf)); },
+  fetchAudio(kind, id, done) {
+    const key = kind + ':' + id;
+    if (this.loading.has(key) || this.synthOnly.has(key)) return;
+    if (!this.index) { this.loadIndex(); return; }        // список ещё едет — попробуем в следующий раз
+    const ext = this.index[kind][id];
+    if (!ext) { this.synthOnly.add(key); return; }        // записи нет, и это нормально: играет синтез
+    this.loading.add(key);
+    const base = 'assets/' + kind + '/' + id;
     const packed = window.AUDIO_ASSETS && window.AUDIO_ASSETS[base];
-    const tryExt = (exts) => {
-      if (!exts.length) { this.loading.delete(id); this.synthOnly.add(id); return; }
-      fetch(packed || (base + '.' + exts[0]))
-        .then((res) => { if (!res.ok) throw 0; return res.arrayBuffer(); })
-        .then((ab) => this.ctx.decodeAudioData(ab))
-        .then((buf) => { this.loading.delete(id); done(buf); })
-        .catch(() => tryExt(packed ? [] : exts.slice(1)));   // встроенную запись пробуем один раз
-    };
-    tryExt(['mp3', 'ogg', 'wav']);
+    fetch(packed || (base + '.' + ext))
+      .then((res) => { if (!res.ok) throw 0; return res.arrayBuffer(); })
+      .then((ab) => this.ctx.decodeAudioData(ab))
+      .then((buf) => { this.loading.delete(key); done(buf); })
+      .catch(() => { this.loading.delete(key); this.synthOnly.add(key); });
   },
 
   // ---------- Музыка ----------
@@ -269,13 +294,11 @@ const Sound = {
     g.connect(this.musicBus);
     this.cur.gain = g;
 
-    const startSynth = () => { if (this.cur.id === id) this.cur.stop = this.synthMusic(id, g); };
     const buf = this.buffers.get('music:' + id);
     if (buf) { this.loopBuffer(buf, g); return; }
-    if (this.synthOnly.has('music:' + id)) { startSynth(); return; }
-    // Пока файл едет — играет синтез; приедет — подменим на следующей смене трека.
-    startSynth();
-    this.fetchAudio('music:' + id, 'assets/music/' + id, (buf2) => {
+    // Пока запись едет — играет синтез, и подменяется на неё, как только приехала.
+    this.cur.stop = this.synthMusic(id, g);
+    this.fetchAudio('music', id, (buf2) => {
       this.buffers.set('music:' + id, buf2);
       if (this.cur.id !== id) return;
       if (this.cur.stop) this.cur.stop();

@@ -42,6 +42,7 @@ fs.mkdirSync(out, { recursive: true });
 
 let count = 0;
 for (const f of FILES) { fs.copyFileSync(path.join(root, f), path.join(out, f)); count++; }
+require('./audio-index.js').build(root);   // список не должен расходиться с папками
 for (const d of DIRS) count += copyDir(path.join(root, d), path.join(out, d));
 
 // Регистрация service worker внутри WebView только мешает: обновление приложения
