@@ -85,14 +85,14 @@
     <h1>Архив версий</h1>
     <p>По умолчанию открывается текущая версия: <strong>Экспедиция v11</strong>.</p>
     <p>GitHub Pages: <a class="button" id="pages-link" href="https://keepi1real.github.io/my2game228/">https://keepi1real.github.io/my2game228/</a></p>
-    <p>Старая версия сохранена в отдельной ветке <code>codex/legacy-old-version</code> и доступна по ссылке ниже.</p>
+    <p>Все прежние версии и эксперименты сведены в ветки с префиксом <code>archive/</code>. Старая версия до v11 — <code>archive/legacy-pre-v11</code>.</p>
     <p class="legacy">Текущая версия всегда на этой странице как «главная» сборка: <a class="button" id="latest-link" href="index.html">Открыть последнюю версию (v11)</a></p>
     <div class="actions">
       <a class="button" href="https://keepi1real.github.io/my2game228/" target="_blank" rel="noopener">Открыть v11 на GitHub Pages</a>
-      <a class="button" href="https://github.com/keepi1real/my2game228/tree/codex/legacy-old-version" target="_blank" rel="noopener">Открыть старую версию</a>
+      <a class="button" href="https://github.com/keepi1real/my2game228/tree/archive/legacy-pre-v11" target="_blank" rel="noopener">Открыть старую версию</a>
       <a class="button" id="back-link" href="index.html">Вернуться в игру v11</a>
     </div>
-    <p>Если вы запускаете проект локально, откройте legacy из отдельного worktree/ветки вручную.</p>
+    <p>Локально старую версию можно посмотреть, не трогая рабочую копию: <code>git switch --detach archive/legacy-pre-v11</code>, вернуться — <code>git switch main</code>.</p>
   </main>
   <script>
     const latestHref = pagesUrl + (location.pathname.endsWith('archive.html') ? '' : '');
