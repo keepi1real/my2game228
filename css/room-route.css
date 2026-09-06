@@ -1,0 +1,6 @@
+.route-toolbar{position:absolute;top:10px;right:12px;display:flex;gap:6px;pointer-events:auto}
+.route-toolbar button,.route-map-controls button{padding:8px 12px;border:1px solid #8c7751;background:rgba(9,23,34,.94);color:#e1cca0;font-size:12px}
+.route-map-controls{position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;pointer-events:none}
+.route-map-controls button{pointer-events:auto}
+@media(max-width:700px){.route-toolbar{top:5px;right:5px;gap:3px}.route-toolbar button{font-size:10px;padding:5px 7px}.route-map-controls button{font-size:11px;padding:5px 9px}}
+

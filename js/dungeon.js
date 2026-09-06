@@ -208,3 +208,4 @@ function placeTorches(map, rng) {
 }
 
 if (typeof module !== 'undefined') module.exports = { GameMap, generateFloor, T_WALL, T_FLOOR, T_STAIRS, T_PILLAR };
+

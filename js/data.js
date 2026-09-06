@@ -248,3 +248,4 @@ function upgradeCost(u, rank) { return u.baseCost + u.costStep * rank; }
 if (typeof module !== 'undefined') {
   module.exports = { HEROES, HERO_BY_ID, SKILLS, MONSTERS, BOSSES, RARITY, ITEM_BASES, ITEM_BASE_BY_ID, AFFIXES, CONSUMABLES, START_ITEMS, UPGRADES, UPGRADE_BY_ID, upgradeCost, xpToNext, MAX_FLOOR, BOSS_FLOORS, MERCHANT_FLOORS, BAG_SIZE };
 }
+

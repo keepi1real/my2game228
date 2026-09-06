@@ -74,3 +74,4 @@ function lineOfSight(map, x0, y0, x1, y1) {
 }
 
 if (typeof module !== 'undefined') module.exports = { RNG, clamp, lerp, dist, angleTo, angleDiff, lineOfSight, TILE };
+

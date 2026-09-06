@@ -182,3 +182,4 @@ function itemStatsText(item) {
 }
 
 if (typeof module !== 'undefined') module.exports = { Player, Enemy, Projectile, Pickup, Chest, Merchant, makeItem, randomItem, rollRarity, randomConsumable, itemStatsText };
+

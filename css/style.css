@@ -94,7 +94,7 @@ kbd {
 .overlay-front {
   background-image:
     linear-gradient(rgba(10, 12, 16, 0.55), rgba(10, 12, 16, 0.8)),
-    url('../assets/ui/menu_bg.webp');
+    url('../assets/recovered-v9/1e2edb8cf85b0dde.webp');
   background-size: cover;
   background-position: center;
 }
@@ -261,3 +261,4 @@ html, body { overscroll-behavior: none; }
   color: var(--text); font-size: 26px; line-height: 1; cursor: pointer;
 }
 .panel-x:hover { border-color: var(--accent); color: var(--accent); }
+

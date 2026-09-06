@@ -7,6 +7,9 @@ class Input {
     this.keys = {}; this.pressed = {};
     this.mouse = { x: VIEW_W / 2, y: VIEW_H / 2, down: false, rdown: false, clicked: false };
     window.addEventListener('keydown', (e) => {
+      // Native menus and reward dialogs keep their browser keyboard actions.
+      const state=window.game?.state;
+      if (state === 'menu' || (['relic-choice','floor-event','talents'].includes(state) && ['Tab','Space','Enter','NumpadEnter','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))) return;
       if (e.repeat) return;
       this.keys[e.code] = true; this.pressed[e.code] = true;
       if (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
@@ -320,7 +323,7 @@ class Game {
     this.effects.push({ type: 'ring', x: p.x, y: p.y, r: radius, time: 0.35, max: 0.35, color: opts.color || '#fff' });
     for (const e of this.enemies) {
       if (!e.alive) continue;
-      if (dist(p.x, p.y, e.x, e.y) <= radius + e.r) this.hitEnemy(e, p.damage() * mult, { knockback: opts.knockback || 0, stun: opts.stun || 0 });
+      if (dist(p.x, p.y, e.x, e.y) <= radius + e.r && this.canReach(p,e)) this.hitEnemy(e, p.damage() * mult, { knockback: opts.knockback || 0, stun: opts.stun || 0 });
     }
     this.burst(p.x, p.y, opts.color || '#fff', 18, radius * 1.5);
   }
@@ -608,7 +611,7 @@ class Game {
             if (dist(pr.x, pr.y, e.x, e.y) < e.r + pr.size) {
               pr.hit.add(e);
               if (pr.explode) { this.projectileEnd(pr); break; }
-              this.hitEnemy(e, pr.dmg, { crit: pr.crit, stun: pr.stun, knockback: 80 });
+              this.hitEnemy(e, pr.dmg, { crit: pr.crit, masteryShot: pr.masteryShot, stun: pr.stun, knockback: 80 });
               if (pr.pierce > 0) pr.pierce--; else { pr.dead = true; break; }
             }
           }
@@ -735,3 +738,4 @@ class Game {
   addText(x, y, text, color, scale = 1) { this.texts.push({ x, y, text, color, life: 0.9, scale }); }
   message(text) { this.messages.push({ text, life: 5 }); if (this.messages.length > 5) this.messages.shift(); }
 }
+

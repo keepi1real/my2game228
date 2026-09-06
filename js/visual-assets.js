@@ -14,17 +14,17 @@
 // zoom — во сколько раз вырезаемый квадрат меньше короткой стороны.
 const PORTRAITS = {
   heroes: {
-    arator: { src: 'assets/heroes/arator.webp', focusY: 0.17, zoom: 2.5 },
-    baldin: { src: 'assets/heroes/baldin.webp', focusY: 0.20, zoom: 2.4 },
-    faelas: { src: 'assets/heroes/faelas.webp', focusY: 0.16, zoom: 2.6 },
-    mithrandir: { src: 'assets/heroes/mithrandir.webp', focusY: 0.19, zoom: 2.5 },
-    peregrin: { src: 'assets/heroes/peregrin.webp', focusY: 0.24, zoom: 2.3 },
+    arator: { src: 'assets/recovered-v9/318205eef8f25986.webp', focusY: 0.17, zoom: 2.5 },
+    baldin: { src: 'assets/recovered-v9/b45855b22b0a3bb3.webp', focusY: 0.20, zoom: 2.4 },
+    faelas: { src: 'assets/recovered-v9/217edd95b5cb8a6e.webp', focusY: 0.16, zoom: 2.6 },
+    mithrandir: { src: 'assets/recovered-v9/c19b630edf099d64.webp', focusY: 0.19, zoom: 2.5 },
+    peregrin: { src: 'assets/recovered-v9/02cdd561c425e2d1.webp', focusY: 0.24, zoom: 2.3 },
   },
   enemies: {
-    goblin: { src: 'assets/enemies/goblin.webp', focusX: 0.44, focusY: 0.19, zoom: 2.5 },
-    warg: { src: 'assets/enemies/warg.webp', focusX: 0.40, focusY: 0.45, zoom: 1.95 },
-    spider: { src: 'assets/enemies/spider.webp', focusY: 0.45, zoom: 1.7 },
-    troll: { src: 'assets/enemies/troll.webp', focusX: 0.46, focusY: 0.22, zoom: 2.0 },
+    goblin: { src: 'assets/recovered-v9/a239904e77c0a785.webp', focusX: 0.44, focusY: 0.19, zoom: 2.5 },
+    warg: { src: 'assets/recovered-v9/26f6a2ba16c9bd8b.webp', focusX: 0.40, focusY: 0.45, zoom: 1.95 },
+    spider: { src: 'assets/recovered-v9/7d010cebbde2f0e1.webp', focusY: 0.45, zoom: 1.7 },
+    troll: { src: 'assets/recovered-v9/27c8c9437b8b20b2.webp', focusX: 0.46, focusY: 0.22, zoom: 2.0 },
   },
   bosses: {},
 };
@@ -37,17 +37,17 @@ const PORTRAITS = {
 // Ключи должны совпадать с id из js/data.js.
 const SPRITES = {
   heroes: {
-    arator: { src: 'assets/sprites/arator.webp', anchorY: 0.973, height: 56 },
-    baldin: { src: 'assets/sprites/baldin.webp', anchorY: 0.973, height: 46 },
-    faelas: { src: 'assets/sprites/faelas.webp', anchorY: 0.973, height: 58 },
-    mithrandir: { src: 'assets/sprites/mithrandir.webp', anchorY: 0.973, height: 56 },
-    peregrin: { src: 'assets/sprites/peregrin.webp', anchorY: 0.973, height: 42 },
+    arator: { src: 'assets/recovered-v9/99ee88127d6f4130.webp', anchorY: 0.973, height: 56 },
+    baldin: { src: 'assets/recovered-v9/cac266de1222cd49.webp', anchorY: 0.973, height: 46 },
+    faelas: { src: 'assets/recovered-v9/28c227b7804268f6.webp', anchorY: 0.973, height: 58 },
+    mithrandir: { src: 'assets/recovered-v9/e9e18c2a4a5864cb.webp', anchorY: 0.973, height: 56 },
+    peregrin: { src: 'assets/recovered-v9/09d6f3708aa79351.webp', anchorY: 0.973, height: 42 },
   },
   enemies: {
-    goblin: { src: 'assets/sprites/goblin.webp', anchorY: 0.973, height: 48 },
-    warg: { src: 'assets/sprites/warg.webp', anchorY: 0.973, height: 42 },
-    spider: { src: 'assets/sprites/spider.webp', anchorY: 0.965, height: 36 },
-    troll: { src: 'assets/sprites/troll.webp', anchorY: 0.973, height: 88 },
+    goblin: { src: 'assets/recovered-v9/7f998b1a611bd1d0.webp', anchorY: 0.973, height: 48 },
+    warg: { src: 'assets/recovered-v9/fd056d2673d0d0ce.webp', anchorY: 0.973, height: 42 },
+    spider: { src: 'assets/recovered-v9/61d1a78975f9b7e4.webp', anchorY: 0.965, height: 36 },
+    troll: { src: 'assets/recovered-v9/0c37604280605fce.webp', anchorY: 0.973, height: 88 },
   },
   // Гразготу и Моргулу арт пока не сделан — они остаются на геометрическом рендере.
   bosses: {},
@@ -60,11 +60,11 @@ const DEFAULT_ANCHOR_Y = 0.97;
 // Бесшовные каменные текстуры 256x256. base заливает весь проходимый пол, остальные
 // ложатся поверх редкими мягкими пятнами, чтобы подземелье не выглядело одной простынёй.
 const FLOOR_TILES = {
-  base: 'assets/tiles/floor_plain.webp',
+  base: 'assets/recovered-v9/a3ce9e139f7178af.webp',
   patches: [
-    'assets/tiles/floor_crack.webp',
-    'assets/tiles/floor_grit.webp',
-    'assets/tiles/floor_moss.webp',
+    'assets/recovered-v9/c2ec897f818d8b5f.webp',
+    'assets/recovered-v9/61e143dc83e6ff23.webp',
+    'assets/recovered-v9/6f2def79e8a1b3cb.webp',
   ],
 };
 
@@ -72,7 +72,7 @@ const FLOOR_TILES = {
 // Лист 4x4 из 16 плиток по 64x64. Индекс плитки — битовая маска соседей-стен:
 //   m = сверху*1 + справа*2 + снизу*4 + слева*8
 // Позиция в листе: sx = (m % 4) * 64, sy = (m >> 2) * 64.
-const WALL_TILES = { src: 'assets/tiles/wall_tileset.webp', size: 64, cols: 4 };
+const WALL_TILES = { src: 'assets/recovered-v9/c6209440101d5ad5.webp', size: 64, cols: 4 };
 
 // ---------- Оружие ближнего боя ----------
 // Чем герой машет. Рисуется вдоль оси X от рукояти к острию, длина приходит от рендера,
@@ -250,7 +250,7 @@ function whiteMask(img) {
   let c = WHITE_MASK.get(img);
   if (c) return c;
   c = document.createElement('canvas');
-  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.width = img.naturalWidth || img.width; c.height = img.naturalHeight || img.height;
   const t = c.getContext('2d');
   t.drawImage(img, 0, 0);
   t.globalCompositeOperation = 'source-in';
@@ -471,3 +471,4 @@ if (typeof UI !== 'undefined') {
     }
   };
 }
+

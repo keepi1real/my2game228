@@ -273,3 +273,4 @@ class UI {
     this.bind('[data-a=camp]', 'click', () => g.toMenu());
   }
 }
+

@@ -530,3 +530,4 @@ class Renderer {
     ctx.fillStyle = g.hero.color; ctx.fillRect(x0 + Math.floor(p.x / TILE) * scale - 1, y0 + Math.floor(p.y / TILE) * scale - 1, scale + 2, scale + 2);
   }
 }
+

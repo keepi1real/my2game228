@@ -9,3 +9,12 @@ www/
 .DS_Store
 node_modules/
 __pycache__/
+
+# Временная распаковка поставки v11 и её архив: тот же код, что уже в репозитории,
+# плюс 67 МБ git-бандла и 94 МБ однофайловой сборки. Держим только на диске.
+_tmp_v11/
+*.zip
+
+# Служебные файлы сессии Claude Code. launch.json нужен, остальное — мусор.
+.claude/share_chat.html
+.claude/tmp_pages_index.html

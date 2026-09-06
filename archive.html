@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Архив версий — Тени Подгорья</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#14151d">
+  <link rel="icon" href="assets/icons/icon-192.png">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f1420;
+      --panel: rgba(16, 24, 36, 0.86);
+      --fg: #f2e8cb;
+      --muted: #b7c2cf;
+      --accent: #e8cf91;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--fg);
+      background:
+        radial-gradient(circle at 12% 15%, #1f2b3e 0%, transparent 42%),
+        radial-gradient(circle at 78% 75%, #211e3a 0%, transparent 50%),
+        linear-gradient(130deg, #090b11, #0f1723 48%, #101624);
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+    }
+    .panel {
+      width: min(680px, 100%);
+      background: var(--panel);
+      border: 1px solid rgba(196, 168, 106, 0.28);
+      border-radius: 16px;
+      padding: 1.3rem;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+    }
+    h1 {
+      margin: 0 0 .45rem 0;
+      font-size: clamp(1.4rem, 3.5vw, 1.8rem);
+      letter-spacing: .04em;
+      color: #f5ebcf;
+    }
+    p { margin: .8rem 0; line-height: 1.45; color: var(--muted); }
+    .actions { display: flex; gap: .7rem; flex-wrap: wrap; margin-top: 1rem; }
+    a.button, button.button {
+      appearance: none;
+      border: 1px solid rgba(226, 201, 129, 0.45);
+      background: #2a2c3b;
+      color: var(--fg);
+      padding: .75rem 1rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1rem;
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    a.button:hover, button.button:hover { background: #3a3e52; }
+    .legacy {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: rgba(7, 11, 18, 0.78);
+      border: 1px dashed rgba(196, 168, 106, 0.45);
+      padding: .75rem;
+      border-radius: 10px;
+      overflow-wrap: anywhere;
+      color: #d9d4f5;
+      font-size: .95rem;
+    }
+  </style>
+  <script>
+    const pagesUrl = 'https://keepi1real.github.io/my2game228/';
+  </script>
+</head>
+<body>
+  <main class="panel">
+    <h1>Архив версий</h1>
+    <p>По умолчанию открывается текущая версия: <strong>Экспедиция v11</strong>.</p>
+    <p>GitHub Pages: <a class="button" id="pages-link" href="https://keepi1real.github.io/my2game228/">https://keepi1real.github.io/my2game228/</a></p>
+    <p>Старая версия сохранена в отдельной ветке <code>codex/legacy-old-version</code> и доступна по ссылке ниже.</p>
+    <p class="legacy">Текущая версия всегда на этой странице как «главная» сборка: <a class="button" id="latest-link" href="index.html">Открыть последнюю версию (v11)</a></p>
+    <div class="actions">
+      <a class="button" href="https://keepi1real.github.io/my2game228/" target="_blank" rel="noopener">Открыть v11 на GitHub Pages</a>
+      <a class="button" href="https://github.com/keepi1real/my2game228/tree/codex/legacy-old-version" target="_blank" rel="noopener">Открыть старую версию</a>
+      <a class="button" id="back-link" href="index.html">Вернуться в игру v11</a>
+    </div>
+    <p>Если вы запускаете проект локально, откройте legacy из отдельного worktree/ветки вручную.</p>
+  </main>
+  <script>
+    const latestHref = pagesUrl + (location.pathname.endsWith('archive.html') ? '' : '');
+    document.getElementById('pages-link').href = latestHref;
+    document.getElementById('pages-link').textContent = latestHref;
+    document.getElementById('latest-link').href = latestHref;
+    document.getElementById('back-link').href = latestHref;
+  </script>
+</body>
+</html>

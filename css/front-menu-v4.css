@@ -1,0 +1,9 @@
+.front-surface { position:absolute; inset:0; pointer-events:none !important; }
+.front-hit { position:absolute; pointer-events:auto; padding:0; margin:0; border:0; border-radius:0; color:transparent; background:transparent; touch-action:manipulation; }
+.front-hit:hover { background:rgba(255,225,170,.08); border:0; }
+.front-hit:active { background:rgba(255,225,170,.17); }
+.front-hit:focus-visible { outline:3px solid #fff0ba; outline-offset:4px; background:rgba(255,225,170,.09); }
+.front-sr { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.expedition-help { width:min(620px,94vw); min-width:0; line-height:1.6; }
+.expedition-help button { min-height:48px; width:100%; }
+@media (prefers-reduced-motion:reduce) { .overlay { animation:none; } }

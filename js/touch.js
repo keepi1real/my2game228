@@ -158,3 +158,4 @@ function autoAimDir(game, p) {
   const dx = best.x - p.x, dy = best.y - p.y, len = Math.hypot(dx, dy) || 1;
   return { x: dx / len, y: dy / len };
 }
+
