@@ -92,7 +92,7 @@ class Game {
     } else this.stairsOpen = true;
     this.map.updateVisibility(Math.floor(p.x / TILE), Math.floor(p.y / TILE), 9);
     this.flow = null; this.flowTimer = 0;
-    this.camera.x = isoX(p.x, p.y); this.camera.y = isoY(p.x, p.y);
+    this.camera.x = p.x - VIEW_W / 2; this.camera.y = p.y - VIEW_H / 2;
     this.banner = { text: gen.boss ? 'Логово босса' : `Этаж ${n}`, sub: gen.boss ? BOSSES[gen.boss.id].name : (n === 1 ? 'Найдите лестницу вниз' : ''), time: 2.6 };
     this.transition = 0.6;
     Save.save();
@@ -152,19 +152,19 @@ class Game {
     // Регенерация и яд.
     if (p.regen() > 0) p.hp = Math.min(p.maxHp, p.hp + p.regen() * dt);
     if (p.poisonTime > 0) { p.poisonTime -= dt; p.hp -= p.poison * dt; if (p.hp <= 0) { this.playerDie('яд'); return; } }
-    // Прицел по мыши: курсор ползает по экрану, целиться надо в точку пола под ним.
-    const aimAt = this.screenToWorld(inp.mouse.x, inp.mouse.y);
-    const ad = dist(p.x, p.y, aimAt.x, aimAt.y);
-    if (ad > 4) { p.aim.x = (aimAt.x - p.x) / ad; p.aim.y = (aimAt.y - p.y) / ad; }
-    // Движение. Клавиши задают направление по экрану, а не по мировым осям:
-    // W должна уводить фигуру вверх, хотя мировая ось Y идёт по диагонали.
+    // Прицел по мыши.
+    const wx = inp.mouse.x + this.camera.x, wy = inp.mouse.y + this.camera.y;
+    const ad = dist(p.x, p.y, wx, wy);
+    if (ad > 4) { p.aim.x = (wx - p.x) / ad; p.aim.y = (wy - p.y) / ad; }
+    // Движение.
     let mx = 0, my = 0;
     if (inp.down('KeyW') || inp.down('ArrowUp')) my -= 1;
     if (inp.down('KeyS') || inp.down('ArrowDown')) my += 1;
     if (inp.down('KeyA') || inp.down('ArrowLeft')) mx -= 1;
     if (inp.down('KeyD') || inp.down('ArrowRight')) mx += 1;
-    const dir = isoDir(mx, my);
-    p.vx = dir.x; p.vy = dir.y;
+    const ml = Math.hypot(mx, my);
+    if (ml > 0) { mx /= ml; my /= ml; }
+    p.vx = mx; p.vy = my;
     if (p.dash) {
       const d = p.dash;
       const step = Math.min(dt, d.time);
@@ -211,14 +211,10 @@ class Game {
     }
     // Видимость и камера.
     if (tx !== p.lastTx || ty !== p.lastTy) { map.updateVisibility(tx, ty, 9); p.lastTx = tx; p.lastTy = ty; this.flow = null; }
-    // Камера живёт в координатах проекции и всегда держит героя в центре: в
-    // изометрии карта — ромб, и упирать её в края прямоугольного экрана нечем.
-    this.camera.x = lerp(this.camera.x, isoX(p.x, p.y), Math.min(1, dt * 8));
-    this.camera.y = lerp(this.camera.y, isoY(p.x, p.y), Math.min(1, dt * 8));
-  }
-  // Точка экрана — в точку пола. Обратна тому, что делает рендер при отрисовке.
-  screenToWorld(sx, sy) {
-    return isoToWorld((sx - VIEW_W / 2) / ISO_ZOOM + this.camera.x, (sy - VIEW_H / 2) / ISO_ZOOM + this.camera.y);
+    const cx = clamp(p.x - VIEW_W / 2, Math.min(0, (map.w * TILE - VIEW_W) / 2), Math.max(0, map.w * TILE - VIEW_W));
+    const cy = clamp(p.y - VIEW_H / 2, Math.min(0, (map.h * TILE - VIEW_H) / 2), Math.max(0, map.h * TILE - VIEW_H));
+    this.camera.x = lerp(this.camera.x, cx, Math.min(1, dt * 8));
+    this.camera.y = lerp(this.camera.y, cy, Math.min(1, dt * 8));
   }
   moveEntity(e, dx, dy) {
     const map = this.map;
@@ -667,7 +663,7 @@ class Game {
     this.flash = Math.max(0, this.flash - dt * 2);
     for (const pt of this.particles) { pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vx *= 0.92; pt.vy *= 0.92; }
     this.particles = this.particles.filter((pt) => pt.life > 0);
-    for (const t of this.texts) { t.life -= dt; t.lift += 28 * dt; }
+    for (const t of this.texts) { t.life -= dt; t.y -= 28 * dt; }
     this.texts = this.texts.filter((t) => t.life > 0);
     for (const ef of this.effects) ef.time -= dt;
     this.effects = this.effects.filter((ef) => ef.time > 0);
@@ -680,8 +676,6 @@ class Game {
       this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: R.float(0.25, 0.6), max: 0.6, color, size: R.float(2, 4) });
     }
   }
-  // lift — подъём в экранных пикселях. Всплывать строка должна вертикально, а
-  // мировая координата в изометрии ушла бы наискось.
-  addText(x, y, text, color, scale = 1) { this.texts.push({ x, y, text, color, life: 0.9, scale, lift: 0 }); }
+  addText(x, y, text, color, scale = 1) { this.texts.push({ x, y, text, color, life: 0.9, scale }); }
   message(text) { this.messages.push({ text, life: 5 }); if (this.messages.length > 5) this.messages.shift(); }
 }

@@ -223,25 +223,21 @@ function motionOf(group, ent, time) {
   let aimX = 0, aimY = 0;
   if (group === 'heroes') {
     aimX = ent.aim.x; aimY = ent.aim.y;
-    facing = isoX(aimX, aimY) >= 0 ? 1 : -1;
+    facing = ent.aim.x >= 0 ? 1 : -1;
     moving = !!ent.dash || Math.abs(ent.vx) + Math.abs(ent.vy) > 0.01;
     attackK = ent.recoil / RECOIL_TIME;
     flash = ent.hurtFlash / 0.15;
     stunned = ent.stunTime > 0;
   } else {
-    facing = isoX(ent.dir.x, ent.dir.y) >= 0 ? 1 : -1;
+    facing = ent.dir.x >= 0 ? 1 : -1;
     moving = ent.state === 'chase' && Math.abs(ent.dir.x) + Math.abs(ent.dir.y) > 0.01;
     attackK = ent.def.windup ? 1 - ent.windup / ent.def.windup : 0;
     if (ent.state !== 'windup') attackK = 0;
     flash = ent.hitFlash / 0.12;
     stunned = ent.stun > 0;
   }
-  // Выпад рисуется в экранных координатах, поэтому прицел проецируем; длина
-  // сохраняется, иначе удар «вглубь» дёргал бы фигуру слабее удара вбок.
-  const px = isoX(aimX, aimY), py = isoY(aimX, aimY), pl = Math.hypot(px, py);
   return {
-    facing, moving, stunned, time, seed: ent.artSeed,
-    aimX: pl > 0 ? px / pl : 0, aimY: pl > 0 ? py / pl : 0,
+    facing, moving, stunned, time, seed: ent.artSeed, aimX, aimY,
     attackK: clamp(attackK, 0, 1),
     flash: clamp(flash, 0, 1),
   };
@@ -365,9 +361,7 @@ function floorSeed(map) {
 
 // Возвращает готовый холст или null, если текстуры ещё грузятся —
 // тогда render.js рисует пол заливкой и пробует снова на следующем кадре.
-// includeWalls: в изометрии стены — объёмные блоки, они рисуются отдельно и по
-// глубине, поэтому в слой пола их класть нельзя.
-function bakeFloorLayer(map, includeWalls = true) {
+function bakeFloorLayer(map) {
   if (!tilesReady()) return null;
   const canvas = document.createElement('canvas');
   canvas.width = map.w * TILE;
@@ -394,7 +388,6 @@ function bakeFloorLayer(map, includeWalls = true) {
   ctx.globalCompositeOperation = 'source-over';
 
   // 3. Стены и колонны поверх пола.
-  if (!includeWalls) return canvas;
   // Координаты целочисленные (px, py кратны TILE) и плитка кладётся 1:1 — швов не будет.
   const walls = wallTiles();
   for (let y = 0; y < map.h; y++) {

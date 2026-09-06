@@ -7,18 +7,48 @@ const vm = require('vm');
 const ctx = { console, module: undefined, localStorage: { getItem: () => null, setItem() {}, removeItem() {} }, performance: { now: () => Date.now() } };
 ctx.window = ctx;
 vm.createContext(ctx);
-for (const f of ['utils', 'data', 'save', 'dungeon', 'entities']) {
+for (const f of ['utils', 'iso', 'data', 'save', 'dungeon', 'entities']) {
   const src = fs.readFileSync(path.join(__dirname, '..', 'js', f + '.js'), 'utf8');
   // Убираем 'use strict', чтобы объявления const/class попали в контекст как глобальные.
   vm.runInContext(src.replace(/^'use strict';/, ''), ctx, { filename: f + '.js' });
 }
 
 // Верхнеуровневые const/class из скриптов не попадают в объект контекста — вытаскиваем их выражением.
-const NAMES = ['HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS'];
+const NAMES = ['HEROES', 'SKILLS', 'MONSTERS', 'BOSSES', 'ITEM_BASES', 'ITEM_BASE_BY_ID', 'AFFIXES', 'START_ITEMS', 'STAT_NAMES', 'STAT_FMT', 'RARITY', 'xpToNext', 'randomItem', 'makeItem', 'Player', 'generateFloor', 'MAX_FLOOR', 'BOSS_FLOORS', 'MERCHANT_FLOORS', 'TILE', 'T_STAIRS', 'isoX', 'isoY', 'isoToWorld', 'isoDir', 'isoDepth', 'ISO_CIRCLE_X', 'ISO_CIRCLE_Y', 'ISO_ANGLE_SHIFT'];
 Object.assign(ctx, vm.runInContext('({' + NAMES.join(',') + '})', ctx));
 
 let failed = 0;
 function check(cond, msg) { if (!cond) { failed++; console.error('FAIL:', msg); } }
+
+// --- Изометрия ---
+// Проекция линейна и обратима: без этого не сойдутся ни прицел по мыши, ни выбор
+// тайла под курсором.
+{
+  const { isoX, isoY, isoToWorld, isoDir, isoDepth, TILE } = ctx;
+  for (const [wx, wy] of [[0, 0], [140, -60], [-33.5, 900], [2048, 1536]]) {
+    const back = isoToWorld(isoX(wx, wy), isoY(wx, wy));
+    check(Math.abs(back.x - wx) < 1e-9 && Math.abs(back.y - wy) < 1e-9, `проекция необратима в (${wx}, ${wy})`);
+  }
+  // Квадрат тайла ложится ромбом ровно вдвое шире своей высоты.
+  const w = isoX(TILE, 0) - isoX(0, TILE), h = isoY(TILE, TILE) - isoY(0, 0);
+  check(Math.abs(w - TILE) < 1e-9, `ширина ромба ${w}, ожидалась ${TILE}`);
+  check(Math.abs(w - h * 2) < 1e-9, `ромб не 2:1: ${w} на ${h}`);
+  // Клавиши задают направление по экрану: W строго вверх, D строго вправо.
+  const up = isoDir(0, -1), right = isoDir(1, 0);
+  check(Math.abs(isoX(up.x, up.y)) < 1e-9 && isoY(up.x, up.y) < 0, 'W уводит не строго вверх по экрану');
+  check(Math.abs(isoY(right.x, right.y)) < 1e-9 && isoX(right.x, right.y) > 0, 'D уводит не строго вправо по экрану');
+  check(Math.abs(Math.hypot(up.x, up.y) - 1) < 1e-9, 'направление не нормировано: скорость зависела бы от клавиши');
+  // Глубина растёт «к зрителю»: соседний тайл вправо-вниз рисуется позже.
+  check(isoDepth(TILE, TILE) > isoDepth(0, 0), 'порядок отрисовки по глубине перевёрнут');
+  // Окружность пола — эллипс с углом, сдвинутым на 45°.
+  const R = 40;
+  for (let t = 0; t < 6.28; t += 0.37) {
+    const dx = isoX(R * Math.cos(t), R * Math.sin(t)), dy = isoY(R * Math.cos(t), R * Math.sin(t));
+    const ex = R * ctx.ISO_CIRCLE_X * Math.cos(t + ctx.ISO_ANGLE_SHIFT);
+    const ey = R * ctx.ISO_CIRCLE_Y * Math.sin(t + ctx.ISO_ANGLE_SHIFT);
+    check(Math.hypot(dx - ex, dy - ey) < 1e-9, `эллипс расходится с проекцией при t=${t.toFixed(2)}`);
+  }
+}
 
 // --- Данные ---
 for (const h of ctx.HEROES) {

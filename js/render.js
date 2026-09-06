@@ -1,15 +1,23 @@
 'use strict';
-// Отрисовка: карта, сущности, эффекты, HUD.
+// Отрисовка: изометрическая карта, сущности, эффекты, HUD.
+//
+// Мир плоский — сущности живут в обычных пиксельных координатах, — а на экран он
+// кладётся проекцией из js/iso.js. Всё, что лежит в плоскости пола (тени, круги
+// умений, дуга взмаха), рисуется эллипсом 2:1: именно так выглядит окружность,
+// если смотреть на пол под изометрическим углом.
 
 const COLORS = {
-  floor: '#24242f', floorAlt: '#20202a', wall: '#3a3a4e', wallTop: '#4a4a62', wallEdge: '#2a2a3a', pillar: '#55556e',
-  stairs: '#d4a94a', fog: 'rgba(5,5,10,0.55)', unseen: '#07070b', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
+  floor: '#24242f', floorAlt: '#20202a', unseen: '#07070b', fog: 'rgba(5,5,10,0.55)',
+  wall: '#3a3a4e', wallTop: '#4a4a62', wallEdge: '#2a2a3a', pillar: '#55556e',
+  stairs: '#d4a94a', gold: '#ffd54f', chest: '#b8863b', merchant: '#6fc3df',
 };
 
-// Сжатие дуги взмаха по вертикали. Вид сверху под углом: движение идёт в плоскости
-// пола, поэтому окружность на экране должна быть эллипсом, иначе удар вверх и вниз
-// выглядит длиннее, чем вбок.
-const SWING_SQUASH = 0.62;
+// Грани блока. Свет падает сверху-слева, поэтому левая щека светлее правой —
+// без этой разницы блок читается как плоский ромб, а не как объём.
+const WALL_LIT = { top: '#4c4c64', left: '#3a3a4e', right: '#2b2b3c' };
+const WALL_DIM = { top: '#2c2c3a', left: '#22222e', right: '#191922' };
+const PILLAR_LIT = { top: '#5f5f7c', left: '#4a4a60', right: '#35354a' };
+const PILLAR_DIM = { top: '#37374a', left: '#2b2b39', right: '#20202b' };
 
 function drawShape(ctx, shape, x, y, r, color, angle = 0) {
   ctx.fillStyle = color;
@@ -24,22 +32,24 @@ function drawShape(ctx, shape, x, y, r, color, angle = 0) {
 
 class Renderer {
   constructor(game) { this.g = game; this.ctx = game.ctx; }
+
   render() {
     const g = this.g, ctx = this.ctx;
     ctx.fillStyle = '#07070b'; ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     if (!g.map || !g.player) return;
-    ctx.save();
     let sx = 0, sy = 0;
     if (g.shake > 0) { sx = (Math.random() - 0.5) * g.shake; sy = (Math.random() - 0.5) * g.shake; }
-    ctx.translate(-Math.round(g.camera.x) + sx, -Math.round(g.camera.y) + sy);
-    this.drawMap();
+    ctx.save();
+    // Камера хранится уже в координатах проекции, поэтому здесь только сдвиг и приближение.
+    ctx.translate(Math.round(VIEW_W / 2 + sx), Math.round(VIEW_H / 2 + sy));
+    ctx.scale(ISO_ZOOM, ISO_ZOOM);
+    ctx.translate(-g.camera.x, -g.camera.y);
+    this.bounds = this.viewTiles();
+    this.drawFloor();
+    this.drawFogFloor();
     this.drawTorches();
-    this.drawChests();
-    this.drawMerchant();
-    this.drawPickups();
     this.drawTelegraphs();
-    this.drawEnemies();
-    this.drawPlayer();
+    this.drawScene();
     this.drawProjectiles();
     this.drawEffects();
     this.drawParticles();
@@ -47,223 +57,291 @@ class Renderer {
     ctx.restore();
     this.drawHud();
   }
+
+  // ---------- Геометрия ----------
+  // Какие тайлы могут попасть в кадр. Экран — прямоугольник, в мире ему отвечает
+  // повёрнутый квадрат, поэтому берём габариты по четырём его углам.
+  viewTiles() {
+    const g = this.g, map = g.map;
+    const hw = VIEW_W / 2 / ISO_ZOOM, hh = VIEW_H / 2 / ISO_ZOOM;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [dx, dy] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]) {
+      const w = isoToWorld(g.camera.x + dx, g.camera.y + dy);
+      if (w.x < minX) minX = w.x;
+      if (w.x > maxX) maxX = w.x;
+      if (w.y < minY) minY = w.y;
+      if (w.y > maxY) maxY = w.y;
+    }
+    // Запас: блок стены поднимается над своим тайлом, поэтому в кадр залезают и те,
+    // чей пол уже ушёл за нижний край экрана.
+    const pad = 3;
+    return {
+      x0: clamp(Math.floor(minX / TILE) - pad, 0, map.w - 1),
+      y0: clamp(Math.floor(minY / TILE) - pad, 0, map.h - 1),
+      x1: clamp(Math.ceil(maxX / TILE) + pad, 0, map.w - 1),
+      y1: clamp(Math.ceil(maxY / TILE) + pad, 0, map.h - 1),
+    };
+  }
+
+  // Ромб как подпуть. Обход всегда в одну сторону, чтобы соседние ромбы в общем
+  // пути сливались без светлых швов по общим рёбрам.
+  tilePath(x0, y0, x1, y1, lift) {
+    const ctx = this.ctx;
+    ctx.moveTo(isoX(x0, y0), isoY(x0, y0) - lift);
+    ctx.lineTo(isoX(x1, y0), isoY(x1, y0) - lift);
+    ctx.lineTo(isoX(x1, y1), isoY(x1, y1) - lift);
+    ctx.lineTo(isoX(x0, y1), isoY(x0, y1) - lift);
+    ctx.closePath();
+  }
+  tileDiamond(tx, ty, lift, inset = 0) {
+    this.tilePath(tx * TILE + inset, ty * TILE + inset, (tx + 1) * TILE - inset, (ty + 1) * TILE - inset, lift);
+  }
+  // Окружность в плоскости пола.
+  floorEllipse(wx, wy, r) {
+    this.ctx.ellipse(isoX(wx, wy), isoY(wx, wy), r * ISO_CIRCLE_X, r * ISO_CIRCLE_Y, 0, 0, Math.PI * 2);
+  }
+  tileAt(x, y) {
+    const m = this.g.map;
+    return m.idx(clamp(Math.floor(x / TILE), 0, m.w - 1), clamp(Math.floor(y / TILE), 0, m.h - 1));
+  }
+  visibleAt(x, y) { return this.g.map.visible[this.tileAt(x, y)]; }
+  seenAt(x, y) { return this.g.map.explored[this.tileAt(x, y)]; }
+
+  // ---------- Пол ----------
   // Слой пола печётся один раз на этаж и хранится вместе с картой, для которой сделан.
   floorLayer(map) {
     if (this.layerFor === map) return this.layer;
     if (typeof bakeFloorLayer !== 'function') { this.layerFor = map; this.layer = null; return null; }
-    const baked = bakeFloorLayer(map);
+    // Без стен: в изометрии они не плитки, а блоки, и рисуются отдельно по глубине.
+    const baked = bakeFloorLayer(map, false);
     if (!baked) return null;              // текстуры ещё грузятся — повторим на следующем кадре
     this.layerFor = map; this.layer = baked;
     return baked;
   }
-  drawMap() {
-    const g = this.g, ctx = this.ctx, map = g.map;
-    const layer = this.floorLayer(map);
+  drawFloor() {
+    const ctx = this.ctx, map = this.g.map, layer = this.floorLayer(map);
     if (layer) {
-      // Весь пол и стены — одним drawImage вместо тысяч заливок по тайлам.
-      const vx = clamp(Math.floor(g.camera.x) - TILE, 0, layer.width);
-      const vy = clamp(Math.floor(g.camera.y) - TILE, 0, layer.height);
-      const vw = Math.min(layer.width - vx, VIEW_W + TILE * 2);
-      const vh = Math.min(layer.height - vy, VIEW_H + TILE * 2);
-      if (vw > 0 && vh > 0) ctx.drawImage(layer, vx, vy, vw, vh, vx, vy, vw, vh);
-    }
-    const x0 = Math.max(0, Math.floor(g.camera.x / TILE) - 1), y0 = Math.max(0, Math.floor(g.camera.y / TILE) - 1);
-    const x1 = Math.min(map.w - 1, Math.ceil((g.camera.x + VIEW_W) / TILE) + 1), y1 = Math.min(map.h - 1, Math.ceil((g.camera.y + VIEW_H) / TILE) + 1);
-    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
-      const i = map.idx(x, y);
-      const t = map.tiles[i], px = x * TILE, py = y * TILE;
-      if (!map.explored[i]) {
-        // Слой напечатан целиком, поэтому неразведанное надо закрасить.
-        if (layer) { ctx.fillStyle = COLORS.unseen; ctx.fillRect(px, py, TILE, TILE); }
-        continue;
-      }
-      if (!layer) {
-        // Запасной путь: пол и стены заливкой, как до текстур.
-        if (t === T_WALL) {
-          let nearFloor = false;
-          for (let oy = -1; oy <= 1 && !nearFloor; oy++) for (let ox = -1; ox <= 1; ox++) if (map.get(x + ox, y + oy) !== T_WALL && map.get(x + ox, y + oy) !== T_PILLAR) { nearFloor = true; break; }
-          if (!nearFloor) continue;
-          ctx.fillStyle = COLORS.wall; ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = COLORS.wallTop; ctx.fillRect(px, py, TILE, 6);
-          if (map.get(x, y + 1) !== T_WALL) { ctx.fillStyle = COLORS.wallEdge; ctx.fillRect(px, py + TILE - 5, TILE, 5); }
-        } else if (t === T_PILLAR) {
-          ctx.fillStyle = COLORS.floor; ctx.fillRect(px, py, TILE, TILE);
-          ctx.fillStyle = COLORS.pillar; ctx.beginPath(); ctx.roundRect(px + 5, py + 3, TILE - 10, TILE - 6, 6); ctx.fill();
-          ctx.fillStyle = '#6a6a88'; ctx.fillRect(px + 8, py + 5, TILE - 16, 4);
-        } else {
-          ctx.fillStyle = ((x + y) & 1) ? COLORS.floor : COLORS.floorAlt; ctx.fillRect(px, py, TILE, TILE);
-        }
-      }
-      // Лестница рисуется каждый кадр: её вид меняется, пока босс жив.
-      if (t === T_STAIRS) this.drawStairs(px, py, g.stairsOpen);
-      if (!map.visible[i]) { ctx.fillStyle = COLORS.fog; ctx.fillRect(px, py, TILE, TILE); }
-    }
-  }
-  // Лестница на следующий этаж. Ступени уходят вверх и вглубь: ближняя широкая
-  // и тёмная, дальние уже и светлее. Не в запечённом слое, потому что вид
-  // зависит от stairsOpen, а тот меняется по ходу боя с боссом.
-  drawStairs(px, py, open) {
-    const ctx = this.ctx, STEPS = 5;
-    const pad = 2, h = (TILE - pad * 2) / STEPS;
-
-    // Проём под лестницей и боковые щёки, в которые врезаны ступени.
-    ctx.fillStyle = '#0c0c12';
-    ctx.fillRect(px + pad, py + pad, TILE - pad * 2, TILE - pad * 2);
-
-    for (let i = 0; i < STEPS; i++) {
-      const k = i / (STEPS - 1);                 // 0 — ближняя ступень, 1 — самая дальняя
-      const inset = pad + 1 + k * 5;             // дальние ступени уже: перспектива
-      const y = py + TILE - pad - (i + 1) * h;
-      const w = TILE - inset * 2;
-      // Дальние ступени светлее — на них падает свет с верхнего этажа.
-      const v = Math.round((open ? 62 : 44) + k * (open ? 52 : 24));
-      ctx.fillStyle = `rgb(${v},${Math.round(v * 0.95)},${Math.round(v * 0.82)})`;
-      ctx.fillRect(px + inset, y, w, h - 0.8);
-      // Кромка подступенка: именно она читается как ребро ступени.
-      ctx.fillStyle = open ? 'rgba(212,169,74,0.5)' : 'rgba(150,152,164,0.22)';
-      ctx.fillRect(px + inset, y, w, 1.2);
-    }
-
-    if (open) {
-      // Тёплый отсвет сверху — подсказка, что проход открыт.
-      const grad = ctx.createLinearGradient(0, py, 0, py + TILE);
-      grad.addColorStop(0, 'rgba(212,169,74,0.30)');
-      grad.addColorStop(1, 'rgba(212,169,74,0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(px + pad, py + pad, TILE - pad * 2, TILE - pad * 2);
-    } else {
-      // Проход закрыт, пока жив босс: поперёк лестницы лежит брус.
-      ctx.fillStyle = '#6d4c41';
-      ctx.fillRect(px + 3, py + TILE / 2 - 2, TILE - 6, 4);
-      ctx.fillStyle = '#8d6e63';
-      ctx.fillRect(px + 3, py + TILE / 2 - 2, TILE - 6, 1.5);
-    }
-  }
-  drawTorches() {
-    const g = this.g, ctx = this.ctx, map = g.map;
-    for (const t of map.torches) {
-      const tx = Math.floor(t.x / TILE), ty = Math.floor(t.y / TILE);
-      if (!map.visible[map.idx(tx, ty)]) continue;
-      if (t.x < g.camera.x - 80 || t.x > g.camera.x + VIEW_W + 80 || t.y < g.camera.y - 80 || t.y > g.camera.y + VIEW_H + 80) continue;
-      const fl = 0.85 + Math.sin(g.time * 9 + t.phase) * 0.15;
-      const grad = ctx.createRadialGradient(t.x, t.y + 6, 2, t.x, t.y + 6, 60 * fl);
-      grad.addColorStop(0, 'rgba(255,170,60,0.35)'); grad.addColorStop(1, 'rgba(255,120,30,0)');
-      ctx.fillStyle = grad; ctx.fillRect(t.x - 70, t.y - 70, 140, 140);
-      ctx.fillStyle = '#7a4a1e'; ctx.fillRect(t.x - 2, t.y, 4, 10);
-      ctx.fillStyle = `rgba(255,${160 + Math.round(60 * fl)},60,1)`; ctx.beginPath(); ctx.arc(t.x, t.y - 1, 4 * fl, 0, Math.PI * 2); ctx.fill();
-    }
-  }
-  visibleAt(x, y) { const m = this.g.map; return m.visible[m.idx(Math.floor(x / TILE), Math.floor(y / TILE))]; }
-  drawChests() {
-    const ctx = this.ctx;
-    for (const c of this.g.chests) {
-      if (!this.visibleAt(c.x, c.y) && !this.g.map.explored[this.g.map.idx(Math.floor(c.x / TILE), Math.floor(c.y / TILE))]) continue;
-      ctx.fillStyle = c.opened ? '#5a4a2a' : COLORS.chest;
-      ctx.beginPath(); ctx.roundRect(c.x - 13, c.y - 9, 26, 18, 4); ctx.fill();
-      ctx.fillStyle = c.opened ? '#3a3020' : '#7a5a25'; ctx.fillRect(c.x - 13, c.y - 3, 26, 3);
-      if (!c.opened) { ctx.fillStyle = COLORS.gold; ctx.fillRect(c.x - 2, c.y - 4, 4, 6); }
-    }
-  }
-  drawMerchant() {
-    const m = this.g.merchant, ctx = this.ctx;
-    if (!m || !this.g.map.explored[this.g.map.idx(Math.floor(m.x / TILE), Math.floor(m.y / TILE))]) return;
-    ctx.fillStyle = '#1f3a44'; ctx.beginPath(); ctx.roundRect(m.x - 22, m.y + 10, 44, 10, 3); ctx.fill();
-    drawShape(ctx, 'circle', m.x, m.y, 13, COLORS.merchant);
-    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', m.x, m.y + 1);
-    const d = dist(m.x, m.y, this.g.player.x, this.g.player.y);
-    ctx.fillStyle = '#e6e2d3'; ctx.font = '12px sans-serif'; ctx.fillText(d < 60 ? '[E] Торговать' : 'Торговец', m.x, m.y - 22);
-  }
-  drawPickups() {
-    const ctx = this.ctx, g = this.g;
-    for (const it of g.pickups) {
-      if (!this.visibleAt(it.x, it.y)) continue;
-      const bob = Math.sin(g.time * 4 + it.bob) * 2;
-      if (it.kind === 'gold') { ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.arc(it.x, it.y + bob, 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff4c2'; ctx.fillRect(it.x - 1, it.y + bob - 2, 2, 2); }
-      else if (it.kind === 'consumable') { const c = CONSUMABLES[it.id]; ctx.fillStyle = c.color; ctx.beginPath(); ctx.roundRect(it.x - 7, it.y - 9 + bob, 14, 18, 3); ctx.fill(); ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.icon, it.x, it.y + bob + 1); }
-      else {
-        const col = RARITY[it.item.rarity].color;
-        ctx.save(); ctx.translate(it.x, it.y + bob); ctx.rotate(Math.PI / 4);
-        ctx.fillStyle = '#12121a'; ctx.fillRect(-9, -9, 18, 18); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(-9, -9, 18, 18); ctx.restore();
-        ctx.fillStyle = col; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(it.item.icon, it.x, it.y + bob + 1);
-        if (it.item.rarity !== 'common') { ctx.globalAlpha = 0.25 + Math.sin(g.time * 5) * 0.1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(it.x, it.y + bob, 16, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
-      }
-    }
-  }
-  drawTelegraphs() {
-    const ctx = this.ctx;
-    for (const e of this.g.enemies) {
-      if (!e.telegraph) continue;
-      const t = e.telegraph, k = 1 - t.time / t.total;
-      ctx.save(); ctx.globalAlpha = 0.25 + k * 0.35;
-      if (t.type === 'circle') { ctx.fillStyle = '#ff5252'; ctx.beginPath(); ctx.arc(t.x, t.y, t.r * (0.5 + 0.5 * k), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.stroke(); }
-      else if (t.type === 'charge') { ctx.translate(e.x, e.y); ctx.rotate(t.angle); ctx.fillStyle = '#ff5252'; ctx.fillRect(0, -e.r, t.len * k, e.r * 2); ctx.globalAlpha = 0.7; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.strokeRect(0, -e.r, t.len, e.r * 2); }
+      // Проекция линейна, поэтому весь запечённый пол ложится одним drawImage:
+      // матрица сама превращает квадраты плиток в ромбы.
+      ctx.save();
+      ctx.transform(ISO_KX, ISO_KY, -ISO_KX, ISO_KY, 0, 0);
+      ctx.drawImage(layer, 0, 0);
       ctx.restore();
+      return;
+    }
+    // Пока текстуры грузятся — плоская заливка.
+    const b = this.bounds;
+    ctx.beginPath();
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
+      const i = map.idx(x, y);
+      if (map.explored[i] && map.tiles[i] !== T_WALL) this.tileDiamond(x, y, 0);
+    }
+    ctx.fillStyle = COLORS.floor; ctx.fill();
+  }
+  // Туман поверх пола: неразведанное закрашивается наглухо, разведанное вне поля
+  // зрения — полупрозрачно. Каждый слой собирается в один путь и заливается разом.
+  drawFogFloor() {
+    const ctx = this.ctx, map = this.g.map, b = this.bounds;
+    let any = false;
+    ctx.beginPath();
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
+      if (!map.explored[map.idx(x, y)]) { this.tileDiamond(x, y, 0); any = true; }
+    }
+    if (any) { ctx.fillStyle = COLORS.unseen; ctx.fill(); }
+    any = false;
+    ctx.beginPath();
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
+      const i = map.idx(x, y);
+      if (map.explored[i] && !map.visible[i] && map.tiles[i] !== T_WALL) { this.tileDiamond(x, y, 0); any = true; }
+    }
+    if (any) { ctx.fillStyle = COLORS.fog; ctx.fill(); }
+  }
+
+  // ---------- Сцена ----------
+  // Стены, лестница и все сущности идут одним списком, отсортированным по глубине:
+  // иначе герой то пропадал бы за стеной, перед которой стоит, то залезал бы на неё.
+  drawScene() {
+    const g = this.g, map = g.map, b = this.bounds, items = [];
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
+      const i = map.idx(x, y), t = map.tiles[i];
+      if (!map.explored[i]) continue;
+      if (t !== T_WALL && t !== T_PILLAR && t !== T_STAIRS) continue;
+      if (t === T_WALL && !this.wallShown(map, x, y)) continue;
+      items.push({ kind: t, d: isoDepth((x + 0.5) * TILE, (y + 0.5) * TILE), x, y, lit: map.visible[i] });
+    }
+    for (const c of g.chests) if (this.seenAt(c.x, c.y)) items.push({ kind: 'chest', d: isoDepth(c.x, c.y), ref: c });
+    const m = g.merchant;
+    if (m && this.seenAt(m.x, m.y)) items.push({ kind: 'merchant', d: isoDepth(m.x, m.y), ref: m });
+    for (const it of g.pickups) if (this.visibleAt(it.x, it.y)) items.push({ kind: 'pickup', d: isoDepth(it.x, it.y), ref: it });
+    for (const e of g.enemies) if (this.visibleAt(e.x, e.y)) items.push({ kind: 'enemy', d: isoDepth(e.x, e.y), ref: e });
+    items.push({ kind: 'player', d: isoDepth(g.player.x, g.player.y), ref: g.player });
+    items.sort((a, c) => a.d - c.d);
+    for (const it of items) {
+      if (it.kind === T_WALL) this.drawBlock(it.x, it.y, it.lit ? WALL_LIT : WALL_DIM, ISO_WALL_H, 0);
+      else if (it.kind === T_PILLAR) this.drawBlock(it.x, it.y, it.lit ? PILLAR_LIT : PILLAR_DIM, ISO_WALL_H * 1.2, TILE * 0.22);
+      else if (it.kind === T_STAIRS) this.drawStairs(it.x, it.y, g.stairsOpen, it.lit);
+      else if (it.kind === 'chest') this.drawChest(it.ref);
+      else if (it.kind === 'merchant') this.drawMerchant(it.ref);
+      else if (it.kind === 'pickup') this.drawPickup(it.ref);
+      else if (it.kind === 'enemy') this.drawEnemy(it.ref);
+      else this.drawPlayer();
     }
   }
-  drawEnemies() {
-    const ctx = this.ctx, g = this.g;
-    for (const e of g.enemies) {
-      if (!this.visibleAt(e.x, e.y)) continue;
-      const def = e.def;
-      const group = e.isBoss ? 'bosses' : 'enemies';
-      const artId = e.isBoss ? def.id : e.type;
-      // Спрайт стоит ступнями на координате, фигура центрируется на ней — тень встаёт по-разному.
-      const spriteW = this.spriteWidth(group, artId);
-      this.drawShadow(e.x, spriteW ? e.y : e.y + e.r * 0.8, spriteW || e.r * 2.65);
-      const angle = Math.atan2(e.dir.y, e.dir.x) || 0;
-      let color = def.color;
-      if (e.hitFlash > 0) color = '#ffffff';
-      if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, e.x, e.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
-      if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, e.x, e.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
-      if (!this.drawArt(group, artId, e, e.r, color)) {
-        drawShape(ctx, def.shape, e.x, e.y, e.r, color, def.shape === 'tri' ? angle : 0);
-        ctx.fillStyle = '#0b0b10'; ctx.font = `bold ${Math.round(e.r * 1.1)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(def.symbol, e.x, e.y + 1);
-      }
-      const top = this.bodyTop(group, artId, e, e.r);
-      if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✶', e.x + Math.sin(g.time * 8) * 6, top - 8); }
-      if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(e.x + e.r, top, 3, 0, Math.PI * 2); ctx.fill(); }
-      // Полоска здоровья.
-      if (e.hp < e.maxHp && !e.isBoss) {
-        const w = e.r * 2 + 6, hy = top - 7;
-        ctx.fillStyle = '#000'; ctx.fillRect(e.x - w / 2, hy, w, 4);
-        ctx.fillStyle = '#e05a4a'; ctx.fillRect(e.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
-      }
+  // Стены в глубине скалы не рисуем: наружу они всё равно не выходят, а блоков было бы втрое больше.
+  wallShown(map, x, y) {
+    if (typeof wallVisible === 'function') return wallVisible(map, x, y);
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) if (!map.isWall(x + ox, y + oy)) return true;
+    return false;
+  }
+  // Блок: верхняя грань и две щеки, обращённые к зрителю. Дальние две не рисуем —
+  // их всё равно закрывает сам блок.
+  drawBlock(tx, ty, pal, h, inset) {
+    const ctx = this.ctx;
+    const x0 = tx * TILE + inset, y0 = ty * TILE + inset;
+    const x1 = (tx + 1) * TILE - inset, y1 = (ty + 1) * TILE - inset;
+    const nx = isoX(x0, y0), ny = isoY(x0, y0);          // дальний угол ромба
+    const ex = isoX(x1, y0), ey = isoY(x1, y0);          // правый
+    const sx = isoX(x1, y1), sy = isoY(x1, y1);          // ближний
+    const wx = isoX(x0, y1), wy = isoY(x0, y1);          // левый
+    ctx.fillStyle = pal.right;
+    ctx.beginPath(); ctx.moveTo(ex, ey - h); ctx.lineTo(sx, sy - h); ctx.lineTo(sx, sy); ctx.lineTo(ex, ey); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = pal.left;
+    ctx.beginPath(); ctx.moveTo(wx, wy - h); ctx.lineTo(sx, sy - h); ctx.lineTo(sx, sy); ctx.lineTo(wx, wy); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = pal.top;
+    ctx.beginPath(); ctx.moveTo(nx, ny - h); ctx.lineTo(ex, ey - h); ctx.lineTo(sx, sy - h); ctx.lineTo(wx, wy - h); ctx.closePath(); ctx.fill();
+  }
+  // Лестница вниз: шахта ступенями уходит под уровень пола. Каждая следующая
+  // ступень ниже и уже, дальние темнее — свет сверху до них уже не достаёт.
+  drawStairs(tx, ty, open, lit) {
+    const ctx = this.ctx, STEPS = 5, drop = 5;
+    for (let i = STEPS - 1; i >= 0; i--) {
+      const k = i / (STEPS - 1);
+      ctx.beginPath();
+      this.tileDiamond(tx, ty, -i * drop, 2 + k * (TILE * 0.16));
+      const v = Math.round((lit ? 58 : 34) - k * (lit ? 34 : 20));
+      ctx.fillStyle = 'rgb(' + v + ',' + Math.round(v * 0.95) + ',' + Math.round(v * 0.84) + ')';
+      ctx.fill();
+      ctx.strokeStyle = open ? 'rgba(212,169,74,0.45)' : 'rgba(150,152,164,0.20)';
+      ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (open) {
+      // Тёплый отсвет — подсказка, что проход открыт.
+      ctx.beginPath(); this.tileDiamond(tx, ty, 0, 2);
+      ctx.fillStyle = 'rgba(212,169,74,0.22)'; ctx.fill();
+    } else {
+      // Пока жив босс, поперёк лестницы лежит брус.
+      const cx = (tx + 0.5) * TILE, cy = (ty + 0.5) * TILE;
+      ctx.beginPath();
+      this.tilePath(cx - TILE * 0.44, cy - 3, cx + TILE * 0.44, cy + 3, 4);
+      ctx.fillStyle = '#8d6e63'; ctx.fill();
+    }
+  }
+
+  // ---------- Сущности ----------
+  // Спрайты и фигуры рисуются в экранных координатах, а сущность хранит мировые.
+  // Подставляем ей проекцию, не трогая оригинал: прототип отдаёт всё остальное —
+  // скорость, прицел, вспышки, — а x и y перекрыты своими.
+  projected(ent) {
+    if (ent.artSeed === undefined && typeof R !== 'undefined') ent.artSeed = R.float(0, Math.PI * 2);
+    const s = Object.create(ent);
+    s.x = isoX(ent.x, ent.y); s.y = isoY(ent.x, ent.y);
+    return s;
+  }
+  drawShadow(x, y, width) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath(); ctx.ellipse(x, y, width * 0.34, width * 0.17, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  drawEnemy(e) {
+    const ctx = this.ctx, g = this.g, def = e.def, s = this.projected(e);
+    const group = e.isBoss ? 'bosses' : 'enemies';
+    const artId = e.isBoss ? def.id : e.type;
+    // Спрайт стоит ступнями на координате, фигура центрируется на ней — тень встаёт по-разному.
+    const spriteW = this.spriteWidth(group, artId);
+    this.drawShadow(s.x, spriteW ? s.y : s.y + e.r * 0.4, spriteW || e.r * 2.65);
+    const angle = isoAngle(e.dir.x, e.dir.y) || 0;
+    let color = def.color;
+    if (e.hitFlash > 0) color = '#ffffff';
+    if (e.state === 'windup') { const k = 1 - e.windup / def.windup; ctx.save(); ctx.globalAlpha = 0.4; drawShape(ctx, def.shape, s.x, s.y, e.r + 4 + k * 6, '#ff5252', angle); ctx.restore(); }
+    if (e.isBoss) { ctx.save(); ctx.globalAlpha = 0.25 + Math.sin(g.time * 4) * 0.1; drawShape(ctx, def.shape, s.x, s.y, e.r + 10, e.phase === 2 ? '#ff1744' : def.color, angle); ctx.restore(); }
+    if (!this.drawArt(group, artId, s, e.r, color)) {
+      drawShape(ctx, def.shape, s.x, s.y, e.r, color, def.shape === 'tri' ? angle : 0);
+      ctx.fillStyle = '#0b0b10'; ctx.font = 'bold ' + Math.round(e.r * 1.1) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(def.symbol, s.x, s.y + 1);
+    }
+    const top = this.bodyTop(group, artId, s, e.r);
+    if (e.stun > 0) { ctx.fillStyle = '#ffd54f'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('✶', s.x + Math.sin(g.time * 8) * 6, top - 8); }
+    if (e.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.beginPath(); ctx.arc(s.x + e.r, top, 3, 0, Math.PI * 2); ctx.fill(); }
+    // Полоска здоровья.
+    if (e.hp < e.maxHp && !e.isBoss) {
+      const w = e.r * 2 + 6, hy = top - 7;
+      ctx.fillStyle = '#000'; ctx.fillRect(s.x - w / 2, hy, w, 4);
+      ctx.fillStyle = '#e05a4a'; ctx.fillRect(s.x - w / 2, hy, w * Math.max(0, e.hp / e.maxHp), 4);
     }
   }
   drawPlayer() {
-    const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero;
+    const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero, s = this.projected(p);
     const spriteW = this.spriteWidth('heroes', hero.id);
-    this.drawShadow(p.x, spriteW ? p.y : p.y + 10, spriteW || 32);
+    this.drawShadow(s.x, spriteW ? s.y : s.y + 5, spriteW || 32);
     // Взмах: сначала след, он всегда позади бойца.
     const swing = this.swingState(p);
-    if (swing) this.drawSwingTrail(p, swing);
+    if (swing) this.drawSwingTrail(p, s, swing);
     // Клинок за спиной рисуется до фигуры, перед грудью — после неё.
-    const bladeInFront = !!swing && Math.sin(swing.angle) > -0.25;
-    if (swing && !bladeInFront) this.drawSwingBlade(p, swing);
-    if (p.shield > 0) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#c77dff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 6, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    const bladeInFront = !!swing && Math.sin(swing.angle + ISO_ANGLE_SHIFT) > -0.25;
+    if (swing && !bladeInFront) this.drawSwingBlade(p, s, swing);
+    if (p.shield > 0) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#c77dff'; ctx.beginPath(); this.floorEllipse(p.x, p.y, p.r + 6); ctx.fill(); ctx.restore(); }
     ctx.save();
     if (p.isInvisible()) ctx.globalAlpha = 0.4;
     let color = hero.color;
     if (p.hurtFlash > 0) color = '#ff5252';
     else if (p.invulnTime > 0 && Math.floor(g.time * 20) % 2 === 0 && !p.dash) color = '#ffffff';
-    if (!this.drawArt('heroes', hero.id, p, p.r, color)) {
-      drawShape(ctx, 'circle', p.x, p.y, p.r, color);
-      ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
-      ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, p.x, p.y + 1);
+    if (!this.drawArt('heroes', hero.id, s, p.r, color)) {
+      drawShape(ctx, 'circle', s.x, s.y, p.r, color);
+      ctx.strokeStyle = '#0b0b10'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(s.x, s.y, p.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(hero.symbol, s.x, s.y + 1);
     }
-    if (swing && bladeInFront) this.drawSwingBlade(p, swing);
+    if (swing && bladeInFront) this.drawSwingBlade(p, s, swing);
     ctx.restore();
-    const top = this.bodyTop('heroes', hero.id, p, p.r);
+    const top = this.bodyTop('heroes', hero.id, s, p.r);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '11px sans-serif';
     for (const b of p.buffs) {
-      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.fillText('▲', p.x - 12, top - 8); }
-      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.fillText('▣', p.x + 12, top - 8); }
+      if (b.stat === 'dmg') { ctx.fillStyle = '#ffd54f'; ctx.fillText('▲', s.x - 12, top - 8); }
+      if (b.stat === 'armor') { ctx.fillStyle = '#bdbdbd'; ctx.fillText('▣', s.x + 12, top - 8); }
     }
-    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.fillText('☠', p.x, top - 10); }
+    if (p.poisonTime > 0) { ctx.fillStyle = '#8e24aa'; ctx.fillText('☠', s.x, top - 10); }
   }
-  // Точки расширения для визуального слоя (js/visual-assets.js).
-  // Без него обе возвращают пустоту, и рендер остаётся полностью геометрическим.
+  drawChest(c) {
+    const ctx = this.ctx, x = isoX(c.x, c.y), y = isoY(c.x, c.y);
+    this.drawShadow(x, y + 4, 30);
+    ctx.fillStyle = c.opened ? '#5a4a2a' : COLORS.chest;
+    ctx.beginPath(); ctx.roundRect(x - 13, y - 15, 26, 18, 4); ctx.fill();
+    ctx.fillStyle = c.opened ? '#3a3020' : '#7a5a25'; ctx.fillRect(x - 13, y - 9, 26, 3);
+    if (!c.opened) { ctx.fillStyle = COLORS.gold; ctx.fillRect(x - 2, y - 10, 4, 6); }
+  }
+  drawMerchant(m) {
+    const ctx = this.ctx, x = isoX(m.x, m.y), y = isoY(m.x, m.y);
+    this.drawShadow(x, y, 44);
+    drawShape(ctx, 'circle', x, y - 13, 13, COLORS.merchant);
+    ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', x, y - 12);
+    const d = dist(m.x, m.y, this.g.player.x, this.g.player.y);
+    ctx.fillStyle = '#e6e2d3'; ctx.font = '12px sans-serif'; ctx.fillText(d < 60 ? '[E] Торговать' : 'Торговец', x, y - 35);
+  }
+  drawPickup(it) {
+    const ctx = this.ctx, g = this.g;
+    const x = isoX(it.x, it.y), y = isoY(it.x, it.y) + Math.sin(g.time * 4 + it.bob) * 2 - 6;
+    if (it.kind === 'gold') { ctx.fillStyle = COLORS.gold; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff4c2'; ctx.fillRect(x - 1, y - 2, 2, 2); }
+    else if (it.kind === 'consumable') { const c = CONSUMABLES[it.id]; ctx.fillStyle = c.color; ctx.beginPath(); ctx.roundRect(x - 7, y - 9, 14, 18, 3); ctx.fill(); ctx.fillStyle = '#0b0b10'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.icon, x, y + 1); }
+    else {
+      const col = RARITY[it.item.rarity].color;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = '#12121a'; ctx.fillRect(-9, -9, 18, 18); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.strokeRect(-9, -9, 18, 18); ctx.restore();
+      ctx.fillStyle = col; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(it.item.icon, x, y + 1);
+      if (it.item.rarity !== 'common') { ctx.globalAlpha = 0.25 + Math.sin(g.time * 5) * 0.1; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    }
+  }
+
+  // ---------- Точки расширения визуального слоя (js/visual-assets.js) ----------
+  // Без него все они возвращают пустоту, и рендер остаётся полностью геометрическим.
   spriteWidth(group, id) {
     return (typeof artSpriteWidth === 'function' && artSpriteWidth(group, id)) || null;
   }
@@ -282,6 +360,8 @@ class Renderer {
     const h = typeof artSpriteHeight === 'function' ? artSpriteHeight(group, id) : null;
     return h ? h * 0.55 : radius;
   }
+
+  // ---------- Взмах ----------
   // Состояние взмаха: клинок проходит дугу рывком в начале и мягко доводится к концу.
   // Урон наносится мгновенно в момент удара, эта кривая — чистая анимация.
   swingState(p) {
@@ -290,41 +370,77 @@ class Renderer {
     const from = p.swingAngle - p.swingArc / 2;
     return { from, angle: from + p.swingArc * (1 - Math.pow(1 - t, 2.6)), range: p.swingRange, fade: 1 - t };
   }
-  // Система координат взмаха: центр — кисть, вертикаль сжата, чтобы дуга читалась
-  // как движение в плоскости пола, а не как ровная окружность на экране.
-  swingSpace(p) {
-    const ctx = this.ctx;
-    ctx.translate(p.x, p.y - this.handHeight('heroes', this.g.hero.id, p.r));
-    ctx.scale(1, SWING_SQUASH);
-  }
-  // След клинка: сектор от начала дуги до текущего положения, а не вся дуга сразу.
-  drawSwingTrail(p, s) {
+  // Дуга лежит в плоскости пола, поэтому на экране это эллипс 2:1, а мировой угол
+  // вдоль него сдвинут на 45° — вывод в js/iso.js.
+  drawSwingTrail(p, s, st) {
     const ctx = this.ctx;
     ctx.save();
-    this.swingSpace(p);
-    ctx.globalAlpha = 0.22 * s.fade; ctx.fillStyle = this.g.hero.color;
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, s.range, s.from, s.angle); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = 0.8 * s.fade; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.arc(0, 0, s.range, s.from, s.angle); ctx.stroke();
+    ctx.translate(s.x, s.y - this.handHeight('heroes', this.g.hero.id, p.r));
+    ctx.scale(ISO_CIRCLE_X, ISO_CIRCLE_Y);
+    const a0 = st.from + ISO_ANGLE_SHIFT, a1 = st.angle + ISO_ANGLE_SHIFT;
+    ctx.globalAlpha = 0.22 * st.fade; ctx.fillStyle = this.g.hero.color;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, st.range, a0, a1); ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.8 * st.fade; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3 / ISO_CIRCLE_X; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, 0, st.range, a0, a1); ctx.stroke();
     ctx.restore();
   }
-  drawSwingBlade(p, s) {
+  // Сам клинок рисуется неискажённым: считаем, куда уехала кисть по эллипсу, и
+  // разворачиваем оружие туда. Длина берётся до этой точки — так удар вглубь
+  // выходит короче удара вбок, как и должно быть под углом.
+  drawSwingBlade(p, s, st) {
     const ctx = this.ctx;
+    const a = st.angle + ISO_ANGLE_SHIFT;
+    const hx = Math.cos(a) * st.range * ISO_CIRCLE_X, hy = Math.sin(a) * st.range * ISO_CIRCLE_Y;
     ctx.save();
-    this.swingSpace(p);
-    ctx.rotate(s.angle);
-    if (typeof drawMeleeWeapon === 'function') drawMeleeWeapon(ctx, this.g.hero.id, s.range * 0.9);
+    ctx.translate(s.x, s.y - this.handHeight('heroes', this.g.hero.id, p.r));
+    ctx.rotate(Math.atan2(hy, hx));
+    if (typeof drawMeleeWeapon === 'function') drawMeleeWeapon(ctx, this.g.hero.id, Math.hypot(hx, hy) * 0.9);
     ctx.restore();
   }
-  drawShadow(x, y, width) {
+
+  // ---------- Эффекты ----------
+  drawTorches() {
+    const g = this.g, ctx = this.ctx, map = g.map;
+    for (const t of map.torches) {
+      if (!map.visible[this.tileAt(t.x, t.y)]) continue;
+      const x = isoX(t.x, t.y), y = isoY(t.x, t.y);
+      const fl = 0.85 + Math.sin(g.time * 9 + t.phase) * 0.15;
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, 60 * fl);
+      grad.addColorStop(0, 'rgba(255,170,60,0.35)'); grad.addColorStop(1, 'rgba(255,120,30,0)');
+      ctx.fillStyle = grad; ctx.fillRect(x - 70, y - 70, 140, 140);
+      ctx.fillStyle = '#7a4a1e'; ctx.fillRect(x - 2, y - 10, 4, 10);
+      ctx.fillStyle = 'rgba(255,' + (160 + Math.round(60 * fl)) + ',60,1)'; ctx.beginPath(); ctx.arc(x, y - 12, 4 * fl, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  drawTelegraphs() {
     const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.ellipse(x, y, width * 0.34, width * 0.15, 0, 0, Math.PI * 2); ctx.fill();
+    for (const e of this.g.enemies) {
+      if (!e.telegraph) continue;
+      const t = e.telegraph, k = 1 - t.time / t.total;
+      ctx.save(); ctx.globalAlpha = 0.25 + k * 0.35;
+      if (t.type === 'circle') {
+        ctx.fillStyle = '#ff5252'; ctx.beginPath(); this.floorEllipse(t.x, t.y, t.r * (0.5 + 0.5 * k)); ctx.fill();
+        ctx.globalAlpha = 0.8; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; ctx.beginPath(); this.floorEllipse(t.x, t.y, t.r); ctx.stroke();
+      } else if (t.type === 'charge') {
+        // Полоса разгона лежит на полу: проецируем её четыре угла, выходит параллелограмм.
+        const ca = Math.cos(t.angle), sa = Math.sin(t.angle);
+        const quad = (len) => [[0, -e.r], [len, -e.r], [len, e.r], [0, e.r]].map(function (c) {
+          const wx = e.x + ca * c[0] - sa * c[1], wy = e.y + sa * c[0] + ca * c[1];
+          return [isoX(wx, wy), isoY(wx, wy)];
+        });
+        const trace = (pts) => { ctx.beginPath(); pts.forEach((pt, i) => (i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1]))); ctx.closePath(); };
+        ctx.fillStyle = '#ff5252'; trace(quad(t.len * k)); ctx.fill();
+        ctx.globalAlpha = 0.7; ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2; trace(quad(t.len)); ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
   drawProjectiles() {
     const ctx = this.ctx;
     for (const pr of this.g.projectiles) {
-      ctx.save(); ctx.translate(pr.x, pr.y); ctx.rotate(pr.angle);
+      ctx.save();
+      ctx.translate(isoX(pr.x, pr.y), isoY(pr.x, pr.y));
+      ctx.rotate(isoAngle(Math.cos(pr.angle), Math.sin(pr.angle)));
       ctx.fillStyle = pr.color;
       if (pr.spin) { ctx.fillRect(-pr.size, -3, pr.size * 2, 6); ctx.fillRect(-3, -pr.size, 6, pr.size * 2); }
       else if (pr.owner === 'player' && pr.size <= 5) { ctx.fillRect(-10, -1.5, 16, 3); ctx.beginPath(); ctx.moveTo(6, -3); ctx.lineTo(11, 0); ctx.lineTo(6, 3); ctx.fill(); }
@@ -335,17 +451,27 @@ class Renderer {
   drawEffects() {
     const ctx = this.ctx;
     for (const ef of this.g.effects) {
-      if (ef.type === 'ring') { const k = 1 - ef.time / ef.max; ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = ef.color; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r * (0.3 + 0.7 * k), 0, Math.PI * 2); ctx.stroke(); ctx.restore(); }
-      else if (ef.type === 'slash') { ctx.save(); ctx.globalAlpha = ef.time / 0.15; ctx.strokeStyle = ef.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ef.x, ef.y, ef.r, ef.angle - 0.6, ef.angle + 0.6); ctx.stroke(); ctx.restore(); }
+      if (ef.type === 'ring') {
+        const k = 1 - ef.time / ef.max;
+        ctx.save(); ctx.globalAlpha = 1 - k; ctx.strokeStyle = ef.color; ctx.lineWidth = 4;
+        ctx.beginPath(); this.floorEllipse(ef.x, ef.y, ef.r * (0.3 + 0.7 * k)); ctx.stroke(); ctx.restore();
+      } else if (ef.type === 'slash') {
+        ctx.save(); ctx.globalAlpha = ef.time / 0.15;
+        ctx.translate(isoX(ef.x, ef.y), isoY(ef.x, ef.y)); ctx.scale(ISO_CIRCLE_X, ISO_CIRCLE_Y);
+        ctx.strokeStyle = ef.color; ctx.lineWidth = 3 / ISO_CIRCLE_X;
+        const a = ef.angle + ISO_ANGLE_SHIFT;
+        ctx.beginPath(); ctx.arc(0, 0, ef.r, a - 0.6, a + 0.6); ctx.stroke(); ctx.restore();
+      }
     }
   }
   drawParticles() {
     const ctx = this.ctx;
     for (const pt of this.g.particles) {
+      const x = isoX(pt.x, pt.y), y = isoY(pt.x, pt.y);
       ctx.globalAlpha = Math.max(0, pt.life / (pt.max || 0.6));
       ctx.fillStyle = pt.color;
-      if (pt.fade) { ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill(); }
-      else ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+      if (pt.fade) { ctx.beginPath(); ctx.arc(x, y, pt.size, 0, Math.PI * 2); ctx.fill(); }
+      else ctx.fillRect(x - pt.size / 2, y - pt.size / 2, pt.size, pt.size);
     }
     ctx.globalAlpha = 1;
   }
@@ -353,13 +479,16 @@ class Renderer {
     const ctx = this.ctx;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const t of this.g.texts) {
+      // Всплывает строго вверх по экрану, поэтому подъём хранится отдельно от мировой точки.
+      const x = isoX(t.x, t.y), y = isoY(t.x, t.y) - (t.lift || 0);
       ctx.globalAlpha = Math.min(1, t.life * 2);
-      ctx.font = `bold ${Math.round(13 * t.scale)}px sans-serif`;
-      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(t.text, t.x, t.y);
-      ctx.fillStyle = t.color; ctx.fillText(t.text, t.x, t.y);
+      ctx.font = 'bold ' + Math.round(13 * t.scale) + 'px sans-serif';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(t.text, x, y);
+      ctx.fillStyle = t.color; ctx.fillText(t.text, x, y);
     }
     ctx.globalAlpha = 1;
   }
+
   // ---------- HUD ----------
   drawHud() {
     const ctx = this.ctx, g = this.g, p = g.player, hero = g.hero, hs = Save.hero(hero.id);
