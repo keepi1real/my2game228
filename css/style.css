@@ -262,3 +262,16 @@ html, body { overscroll-behavior: none; }
 }
 .panel-x:hover { border-color: var(--accent); color: var(--accent); }
 
+
+/* Ползунки громкости в паузе. Крупная дорожка и бегунок: на телефоне в них
+   надо попадать пальцем, а стандартный range на 4 px не даёт этого сделать. */
+.volumes { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 18px; }
+.vol-row { display: grid; grid-template-columns: 76px 1fr 34px; align-items: center; gap: 12px; }
+.vol-row > span:first-child { color: #b7c2cf; font-size: 14px; }
+.vol-num { font-variant-numeric: tabular-nums; text-align: right; color: #b7c2cf; font-size: 14px; }
+.vol-row input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; }
+.vol-row input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: #2a2c3b; border: 1px solid rgba(226, 201, 129, .28); }
+.vol-row input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: #2a2c3b; border: 1px solid rgba(226, 201, 129, .28); }
+.vol-row input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: -8px; border-radius: 50%; background: #e2c981; border: 1px solid #14151d; cursor: pointer; }
+.vol-row input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #e2c981; border: 1px solid #14151d; cursor: pointer; }
+.vol-row input[type=range]:focus-visible { outline: 2px solid #e2c981; outline-offset: 3px; }

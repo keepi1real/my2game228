@@ -38,9 +38,28 @@ function inlineAssets(text) {
 js = inlineAssets(js);
 css = inlineAssets(css);
 
+// Звук ищется по вычисляемому пути ('assets/sfx/' + id), поэтому регулярка выше
+// его не видит. Собираем содержимое двух папок в карту, из которой автономный
+// файл читает по data:-ссылке. Пока папок нет, карта пустая и звук синтезируется.
+const AUDIO_MIME = { '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav' };
+const audio = {};
+for (const dir of ['assets/music', 'assets/sfx']) {
+  const abs = path.join(root, dir);
+  if (!fs.existsSync(abs)) continue;
+  for (const name of fs.readdirSync(abs)) {
+    const ext = path.extname(name).toLowerCase();
+    if (!AUDIO_MIME[ext]) continue;
+    const key = dir + '/' + name.slice(0, -ext.length);
+    if (audio[key]) continue;   // одна запись на id: первый найденный формат выигрывает
+    audio[key] = `data:${AUDIO_MIME[ext]};base64,` + fs.readFileSync(path.join(abs, name)).toString('base64');
+  }
+}
+const audioCount = Object.keys(audio).length;
+js = 'window.AUDIO_ASSETS = ' + JSON.stringify(audio) + ';\n' + js;
+
 const title = html.match(/<title>(.*?)<\/title>/)[1];
 const body = `<title>${title}</title>\n<style>\n${css}</style>\n<div id="game-root">\n  <canvas id="game" width="1024" height="640"></canvas>\n  <div id="ui"></div>\n</div>\n<script>\n'use strict';\n${js}\n</script>\n`;
 const doc = artifact ? body : `<!DOCTYPE html>\n<html lang="ru">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n${body.replace('<div id="game-root">', '</head>\n<body>\n<div id="game-root">')}</body>\n</html>\n`;
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, doc);
-console.log(`Записано ${out} (${(doc.length / 1024).toFixed(0)} КБ), встроено ассетов: ${new Set(inlined).size}`);
+console.log(`Записано ${out} (${(doc.length / 1024).toFixed(0)} КБ), встроено ассетов: ${new Set(inlined).size}, звуков: ${audioCount}`);

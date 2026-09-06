@@ -6,7 +6,7 @@
 // Поднимите CACHE после правок в js/, css/ или assets/, иначе у уже установивших
 // игру останется старая версия: старые кэши удаляются в activate по имени.
 
-const CACHE = 'undermountain-expedition-v11-r1';
+const CACHE = 'undermountain-expedition-v11-r2';
 
 // Оболочка и все обязательные изображения входят в начальный кэш,
 // чтобы после первого запуска каждый из восьми этажей был доступен без сети.
@@ -24,6 +24,7 @@ const SHELL = [
   './js/touch.js',
   './js/data.js',
   './js/save.js',
+  './js/audio.js',
   './js/dungeon.js',
   './js/entities.js',
   './js/render.js',
@@ -53,6 +54,7 @@ const SHELL = [
   './js/progression-v11.js',
   './js/talent-ui-v11.js',
   './js/crown-v11.js',
+  './js/audio-hooks.js',
   './js/main.js',
   './assets/crown-v11/amber-atlas.png',
   './assets/crown-v11/amber-terrain.png',
