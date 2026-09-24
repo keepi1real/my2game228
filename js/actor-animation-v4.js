@@ -6,8 +6,8 @@ const ActorMotion = (() => {
   // Every atlas has 8 columns of 192px cells. Keep the old sprites as
   // loading/error fallbacks; new sheets add a fifth row for spell casts.
   const heroSheets={
-    arator:{file:'knight',height:56,footX:111,footY:174,figureH:156,rows:4},
-    faelas:{file:'archer',height:58,footX:111,footY:174,figureH:156,rows:4},
+    arator:{file:'knight',height:56,footX:111,footY:174,castFootX:88,castFootY:178,figureH:156,rows:5},
+    faelas:{file:'archer',height:58,footX:111,footY:174,castFootX:88,castFootY:178,figureH:156,rows:5},
     baldin:{file:'baldin',height:46,footX:88,footY:178,figureH:136,rows:5},
     mithrandir:{file:'mithrandir',height:56,footX:88,footY:178,figureH:160,rows:5},
     peregrin:{file:'peregrin',height:42,footX:88,footY:178,figureH:119,rows:5},
@@ -36,10 +36,12 @@ const ActorMotion = (() => {
     const sheet=heroSheets[id],img=sheet?.image;
     if(!ready(img))return false;
     const {row,frame}=sheetFrame(id,s,e),k=h/sheet.figureH;
+    const footX=row===4?sheet.castFootX??sheet.footX:sheet.footX;
+    const footY=row===4?sheet.castFootY??sheet.footY:sheet.footY;
     c.save();c.imageSmoothingEnabled=false;
     c.translate(e.x,e.y);c.scale((s.facing||1)*k,k);
-    c.drawImage(img,frame*192,row*192,192,192,-sheet.footX,-sheet.footY,192,192);
-    if(s.hit>0){c.globalAlpha=Math.min(.65,s.hit/.12);c.filter='brightness(0) invert(1)';c.drawImage(img,frame*192,row*192,192,192,-sheet.footX,-sheet.footY,192,192);}
+    c.drawImage(img,frame*192,row*192,192,192,-footX,-footY,192,192);
+    if(s.hit>0){c.globalAlpha=Math.min(.65,s.hit/.12);c.filter='brightness(0) invert(1)';c.drawImage(img,frame*192,row*192,192,192,-footX,-footY,192,192);}
     c.restore();return true;
   }
   const aliases={orc:['enemies','goblin',54],archer:['enemies','goblin',50],uruk:['enemies','troll',76],wraith:['heroes','mithrandir',62],shadow:['heroes','mithrandir',53],grazgot:['enemies','troll',114],morgul:['heroes','mithrandir',108]};
