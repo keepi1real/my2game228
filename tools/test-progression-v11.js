@@ -24,6 +24,18 @@ const assert=require('assert'),vm=require('vm'),{harness}=require('./test-room-v
   C.grant(g,'glassheart');assert.equal(g.player.armor(),1);const max=g.player.maxHp,pots=g.player.consumables.potion;C.grant(g,'glassheart');assert.equal(g.player.maxHp,max);assert.equal(g.player.consumables.potion,pots+1);
   C.grant(g,'petal');g.useSkill(1);base=g.player.damage();assert.equal(attack(e),Math.round(base*1.3));assert.equal(g.player.combatV11.petalTime,0);
   for(const level of ['amber','glass']){start('arator',level);const offers=C.draft(g,g.journey.rooms[6]);assert(offers.some(id=>C.catalog[id].biome===level));assert(!offers.some(id=>C.catalog[id].biome&&C.catalog[id].biome!==level));}
+  // New floor rewards vary by seed, survive reloads, and never leave more than
+  // three successive eligible combat/elite rooms without a relic.
+  const rewardPatterns=new Set();
+  for(const seed of [11,23,42,71,105,134]){
+    g.toMenu();g.startSeamlessJourney(seed,'arator');
+    const eligible=g.journey.rooms.filter(r=>['combat','elite'].includes(r.role));
+    const pattern=eligible.map(r=>r.reward?.status==='sealed'?'1':'0').join('');
+    rewardPatterns.add(pattern);assert(pattern.includes('0')&&pattern.includes('1'));
+    assert(!pattern.includes('0000'),'relic pity after three misses');
+    C.prepareRooms(g);assert.equal(eligible.map(r=>r.reward?.status==='sealed'?'1':'0').join(''),pattern,'reward reroll');
+  }
+  assert(rewardPatterns.size>1,'different runs should have different relic placements');
   // Save all new state and migrate a real v9-shaped checkpoint without credits.
   start();g.player.talents={points:1,earned:3,clears:7,nodes:['edge','fervor']};g.player.combatV11.combo=2;g.player.combatV11.comboTime=1.7;g.player.attackTimer=.23;g.saveJourney();let raw=h.storage.get(S.key),state=JSON.stringify(g.player.talents);g.toMenu();assert(g.resumeSeamlessJourney());assert.equal(JSON.stringify(g.player.talents),state);assert.equal(g.player.combatV11.comboTime,1.7);assert.equal(g.player.attackTimer,.23);
   const bad=JSON.parse(raw);bad.player.talents.nodes=['hunt'];bad.player.talents.earned=2;h.storage.set(S.key,JSON.stringify(bad));assert(!g.resumeSeamlessJourney(),'prerequisite save validation');g.toMenu();const old=JSON.parse(raw);delete old.player.talents;delete old.player.combatV11;old.rooms.forEach(r=>delete r.talentCounted);h.storage.set(S.key,JSON.stringify(old));assert(g.resumeSeamlessJourney());assert.equal(g.player.talents.points,1);assert.equal(g.player.talents.clears,0);
