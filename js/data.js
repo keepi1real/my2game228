@@ -13,36 +13,36 @@ function xpToNext(level) { return Math.round(60 * Math.pow(level, 1.45)); }
 // ---------- Герои ----------
 const HEROES = [
   {
-    id: 'arator', name: 'Аратор', title: 'Следопыт Севера', symbol: 'A', color: '#5cb85c',
-    desc: 'Наследник забытого королевства. Сбалансированный боец с мечом: крепок, быстр и умеет лечиться травами.',
+    id: 'arator', name: 'Ваудин', title: 'Страж Красного Плаща', symbol: 'В', color: '#5cb85c',
+    desc: 'Страж пограничных мастерских. Сражается мечом и щитом, быстро сближается с врагом и умеет лечиться травами.',
     hp: 120, hpPerLevel: 9, dmg: 14, dmgPerLevel: 1.1, speed: 172, armor: 2, crit: 0.08,
     attack: { type: 'melee', range: 48, arc: Math.PI * 0.65, cooldown: 0.45 },
     skills: ['dashStrike', 'warcry', 'herbs'], unlockCost: 0,
   },
   {
-    id: 'baldin', name: 'Балдин', title: 'Гном из Железных Чертогов', symbol: 'Б', color: '#e8a33d',
-    desc: 'Тяжёлый топор, тяжёлая броня, тяжёлый нрав. Медленный, но очень живучий и бьёт наповал.',
+    id: 'baldin', name: 'Таррок', title: 'Боец Медной Клятвы', symbol: 'Т', color: '#e8a33d',
+    desc: 'Мастер медного доспеха с тяжёлым топором. Медленный, но очень живучий и бьёт наповал.',
     hp: 165, hpPerLevel: 12, dmg: 22, dmgPerLevel: 1.6, speed: 142, armor: 5, crit: 0.05,
     attack: { type: 'melee', range: 44, arc: Math.PI * 0.85, cooldown: 0.7 },
     skills: ['whirlwind', 'stoneSkin', 'axeThrow'], unlockCost: 0,
   },
   {
-    id: 'faelas', name: 'Фаелас', title: 'Лучник Сумеречного леса', symbol: 'Ф', color: '#6fc3df',
-    desc: 'Эльф с длинным луком. Хрупкий, но стремительный: держит дистанцию и осыпает врагов стрелами.',
+    id: 'faelas', name: 'Илвен', title: 'Охотница Пепельных Троп', symbol: 'И', color: '#6fc3df',
+    desc: 'Ловкая охотница с длинным луком. Держит дистанцию и осыпает врагов стрелами.',
     hp: 85, hpPerLevel: 6, dmg: 11, dmgPerLevel: 0.9, speed: 196, armor: 0, crit: 0.15,
     attack: { type: 'ranged', speed: 540, cooldown: 0.38, size: 4, color: '#c8f0ff' },
     skills: ['volley', 'evade', 'trueshot'], unlockCost: 60,
   },
   {
-    id: 'mithrandir', name: 'Митрандир', title: 'Серый странник', symbol: 'М', color: '#c77dff',
-    desc: 'Маг с посохом и искрой древнего огня. Слаб телом, но огненные шары и вспышки решают бой издалека.',
+    id: 'mithrandir', name: 'Элира', title: 'Заклинательница Стеклянных Рун', symbol: 'Э', color: '#c77dff',
+    desc: 'Рунная чародейка с кристальным жезлом. Уязвима вблизи, но огненные шары и вспышки решают бой издалека.',
     hp: 80, hpPerLevel: 6, dmg: 16, dmgPerLevel: 1.2, speed: 166, armor: 0, crit: 0.06,
     attack: { type: 'ranged', speed: 420, cooldown: 0.55, size: 6, color: '#e2b3ff' },
     skills: ['fireball', 'flash', 'barrier'], unlockCost: 90,
   },
   {
-    id: 'peregrin', name: 'Перегрин', title: 'Хоббит из Зелёных Холмов', symbol: 'П', color: '#f5d76e',
-    desc: 'Маленький, быстрый и незаметный. Кинжал, камни и второй завтрак — всё, что нужно для приключения.',
+    id: 'peregrin', name: 'Шелт', title: 'Масочник Ночного Двора', symbol: 'Ш', color: '#f5d76e',
+    desc: 'Компактный и незаметный разведчик. Кинжал, праща и экстренный паёк помогают выжить в одиночку.',
     hp: 95, hpPerLevel: 7, dmg: 9, dmgPerLevel: 0.8, speed: 212, armor: 1, crit: 0.2,
     attack: { type: 'melee', range: 38, arc: Math.PI * 0.55, cooldown: 0.28 },
     skills: ['vanish', 'stone', 'breakfast'], unlockCost: 120,
@@ -95,7 +95,7 @@ const SKILLS = {
     },
   },
   evade: {
-    name: 'Прыжок эльфа', icon: '⇠', cooldown: 5,
+    name: 'Охотничий отскок', icon: '⇠', cooldown: 5,
     desc: 'Отскок назад на 150 px с неуязвимостью.',
     use(g, p, aim) { g.playerDash(p, { x: -aim.x, y: -aim.y }, 150, 0.15, { invuln: true }); },
   },
@@ -130,7 +130,7 @@ const SKILLS = {
     use(g, p, aim) { g.spawnProjectile({ x: p.x, y: p.y, vx: aim.x * 480, vy: aim.y * 480, dmg: p.damage() * 1.3, owner: 'player', size: 5, color: '#a1887f', life: 1.0, stun: 1.5 }); },
   },
   breakfast: {
-    name: 'Второй завтрак', icon: '☕', cooldown: 20,
+    name: 'Полевой паёк', icon: '☕', cooldown: 20,
     desc: 'Мгновенно лечит 25% здоровья и даёт +30% скорости на 5 с.',
     use(g, p) { g.healPlayer(p.maxHp * 0.25); p.addBuff('speed', 0.3, 5); g.addText(p.x, p.y - 20, 'Ням!', '#f5d76e'); },
   },
@@ -248,4 +248,3 @@ function upgradeCost(u, rank) { return u.baseCost + u.costStep * rank; }
 if (typeof module !== 'undefined') {
   module.exports = { HEROES, HERO_BY_ID, SKILLS, MONSTERS, BOSSES, RARITY, ITEM_BASES, ITEM_BASE_BY_ID, AFFIXES, CONSUMABLES, START_ITEMS, UPGRADES, UPGRADE_BY_ID, upgradeCost, xpToNext, MAX_FLOOR, BOSS_FLOORS, MERCHANT_FLOORS, BAG_SIZE };
 }
-
