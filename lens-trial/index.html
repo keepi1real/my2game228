@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101924">
+  <title>Испытание линзы — Осколки рассвета</title>
+  <style>
+    :root{color-scheme:dark;--ink:#f7f0dd;--muted:#c3c8c8;--gold:#f1d19a;--line:rgba(255,232,184,.25);--glass:rgba(10,21,30,.79)}
+    *{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden;background:#101924;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}button{font:inherit;cursor:pointer;color:inherit}button:focus-visible{outline:2px solid #ffe6ad;outline-offset:3px}button:disabled{opacity:.53;cursor:wait}#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 52% 44%,transparent 35%,rgba(4,12,19,.26) 100%)}[hidden]{display:none!important}
+    .serif{font-family:Georgia,"Times New Roman",serif;font-weight:400}.eyebrow{text-transform:uppercase;letter-spacing:.24em;font-size:.72rem;font-weight:700;color:var(--gold)}.muted{color:var(--muted)}
+    #menu{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:minmax(340px,600px) 1fr;background:linear-gradient(90deg,rgba(7,17,27,.98) 0%,rgba(7,17,27,.92) 32%,rgba(8,17,26,.64) 60%,rgba(6,13,20,.1) 100%);overflow:auto}
+    .menu-inner{width:100%;min-height:100%;padding:clamp(24px,5vh,62px) clamp(24px,5vw,76px) 20px;display:flex;flex-direction:column;justify-content:center;gap:18px}.brand{display:flex;align-items:center;gap:12px;letter-spacing:.22em;font-size:.68rem;font-weight:700;text-transform:uppercase;color:var(--gold)}.brand-mark{width:25px;height:25px;transform:rotate(45deg);border:1px solid var(--gold);display:grid;place-items:center}.brand-mark:after{content:"";display:block;width:9px;height:9px;border:1px solid var(--gold)}
+    h1{font-size:clamp(3.4rem,7vw,6.8rem);line-height:.87;letter-spacing:-.065em;margin:18px 0 8px;max-width:680px;text-shadow:0 4px 25px rgba(0,0,0,.22)}.subtitle{font-size:.84rem;letter-spacing:.12em;text-transform:uppercase;color:#d8d6cd}.rule{height:1px;background:linear-gradient(90deg,var(--gold),transparent);opacity:.6;margin:12px 0 3px}.level{border-left:2px solid var(--gold);padding:5px 0 5px 18px}.level h2{margin:4px 0 3px;font:400 1.65rem Georgia,serif}.level p{font-size:.83rem;line-height:1.5;margin:0;color:var(--muted)}.choose{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin:4px 0 -8px}.heroes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hero-card{text-align:left;min-width:0;padding:12px;border:1px solid var(--line);background:rgba(24,36,44,.72);transition:background .18s,border-color .18s,transform .18s}.hero-card:hover{background:rgba(43,55,60,.88);transform:translateY(-2px)}.hero-card[aria-pressed="true"]{border-color:#f9ddab;background:linear-gradient(135deg,rgba(115,91,55,.49),rgba(24,36,44,.86));box-shadow:inset 0 0 0 1px rgba(249,221,171,.3)}.hero-card canvas{height:72px;width:100%;display:block;image-rendering:auto}.hero-name{font:400 1.28rem Georgia,serif;display:block;margin:3px 0}.hero-trait{font-size:.7rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}.actions{display:flex;flex-wrap:wrap;gap:10px}.primary,.secondary{min-height:50px;padding:12px 21px;border:1px solid var(--gold);font-size:.77rem;letter-spacing:.13em;text-transform:uppercase;font-weight:750}.primary{background:var(--gold);color:#1a2530}.primary:hover:not(:disabled){background:#ffdfaa}.secondary{background:rgba(6,18,28,.54)}.secondary:hover{background:rgba(253,227,179,.13)}.menu-foot{color:#aab5b9;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;margin-top:7px}#loading{min-height:1.2em;font-size:.78rem;color:#eedaa9}
+    #hud{position:fixed;inset:0;pointer-events:none;z-index:3}.hud-top{position:absolute;left:clamp(16px,2.6vw,38px);right:clamp(16px,2.6vw,38px);top:max(16px,env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.hud-panel{pointer-events:auto;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);box-shadow:0 10px 24px rgba(0,0,0,.18)}.status{padding:14px 18px;width:min(430px,48vw)}.status-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.status-head strong{font:400 1.26rem Georgia,serif}.status-head span,.small{color:#e7d5ac;font-size:.72rem;letter-spacing:.11em;text-transform:uppercase}.bar{height:8px;margin:9px 0 10px;border:1px solid rgba(255,255,255,.2);background:#331e27}.bar>i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#a44c5a,#ee9483);transition:width .12s}.objective{font-size:.8rem;line-height:1.4;color:#e4e9e4}.stage{padding:13px 17px;display:flex;gap:18px;align-items:center;font-size:.76rem;text-transform:uppercase;letter-spacing:.12em}.hud-tools{display:flex;gap:6px;pointer-events:auto}.tool{min-width:44px;min-height:44px;padding:8px 11px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(12px);font-size:.72rem;letter-spacing:.07em}.tool:hover{background:#364751}.tool[aria-pressed="true"]{color:#282b2d;background:#eacb94}.top-right{display:flex;align-items:flex-start;gap:8px}.boss{position:absolute;top:108px;left:50%;transform:translateX(-50%);width:min(400px,55vw);padding:10px 14px;text-align:center;background:rgba(30,11,23,.87);border:1px solid #d3877d}.boss .bar{margin:7px 0 0;height:6px}.boss .bar i{background:#d8817a}
+    .hud-bottom{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:clamp(16px,2.6vw,38px);right:clamp(16px,2.6vw,38px);display:flex;justify-content:space-between;align-items:flex-end;gap:12px}.help{padding:10px 14px;color:#dae0dd;font-size:.72rem;line-height:1.5;background:rgba(9,20,29,.73);border:1px solid var(--line)}.combat-buttons{display:flex;gap:8px;pointer-events:auto;align-items:stretch}.action-btn{min-width:74px;min-height:56px;padding:7px 14px;border:1px solid var(--line);background:rgba(12,25,36,.89);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;backdrop-filter:blur(12px);touch-action:none}.action-btn.attack{border-color:var(--gold);background:rgba(104,78,46,.83);min-width:112px}.action-btn:active{background:#927451}.action-btn[disabled]{opacity:.5;cursor:default}.action-btn span{font-size:.77rem;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.action-btn small{font-size:.65rem;color:#f7dbad;letter-spacing:.06em}.joystick{display:none;position:relative;width:104px;height:104px;flex:none;border-radius:50%;border:1px solid rgba(255,237,194,.44);background:rgba(15,29,39,.53);pointer-events:auto;touch-action:none}.joystick:before{content:"";position:absolute;inset:20px;border:1px solid rgba(255,237,194,.25);border-radius:50%}.joystick-knob{position:absolute;top:50%;left:50%;width:41px;height:41px;border-radius:50%;background:rgba(255,221,157,.79);box-shadow:0 1px 13px rgba(255,221,157,.25);transform:translate(-50%,-50%);pointer-events:none}
+    #ending{position:fixed;inset:0;z-index:12;display:grid;place-items:center;padding:22px;background:rgba(4,11,18,.74);backdrop-filter:blur(7px)}.ending-card{width:min(440px,100%);padding:36px;border:1px solid var(--line);background:#101d28;text-align:center;box-shadow:0 25px 70px #0008}.ending-card h2{font:400 clamp(2.4rem,5vw,3.7rem)/1 Georgia,serif;margin:12px 0}.ending-card p{font-size:.86rem;line-height:1.55;color:var(--muted);margin:0 0 24px}.ending-card .actions{justify-content:center}
+    @media(max-width:750px){#menu{display:block;background:linear-gradient(90deg,rgba(7,17,27,.96),rgba(7,17,27,.7)),linear-gradient(0deg,rgba(7,17,27,.92),transparent 85%)}.menu-inner{width:min(520px,100%);min-height:100%;gap:12px;padding:22px 20px 18px;justify-content:flex-start}h1{font-size:clamp(3.3rem,12vw,5rem);margin:14px 0 0}.rule{margin:5px 0}.hero-card canvas{height:58px}.hero-card{padding:9px}.menu-foot{margin-top:2px}.hud-top{display:block}.status{width:min(100%,390px);padding:10px 12px}.top-right{margin-top:7px;justify-content:space-between;align-items:center}.stage{padding:8px 10px;gap:9px;font-size:.64rem}.tool{padding:6px 9px;font-size:.66rem}.hud-bottom{left:14px;right:14px;bottom:max(12px,env(safe-area-inset-bottom))}.help{display:none}.joystick{display:block}.action-btn{min-width:57px;min-height:58px;padding:5px 7px}.action-btn.attack{min-width:72px}.action-btn span{font-size:.65rem}.action-btn small{font-size:.57rem}.boss{top:173px;width:min(340px,83vw)}}
+    @media(max-width:750px) and (max-height:680px){.menu-inner{gap:6px}.brand{font-size:.58rem}h1{font-size:clamp(2.8rem,10vw,4.2rem);margin:8px 0 0}.subtitle{font-size:.69rem}.level h2{font-size:1.33rem}.level p{font-size:.72rem}.hero-card canvas{height:38px}.hero-name{font-size:1.05rem}.primary,.secondary{min-height:43px;padding:8px 14px}.status{padding:7px 10px}.status-head strong{font-size:1rem}.objective{font-size:.71rem}.bar{margin:5px 0}.hud-bottom{bottom:8px}.joystick{width:85px;height:85px}.action-btn{min-height:50px}}
+    @media(max-width:390px){.top-right{flex-wrap:wrap}.tool{min-height:40px}.combat-buttons{gap:4px}.joystick{width:86px;height:86px}.action-btn{min-width:51px}.action-btn.attack{min-width:65px}}
+    @media(pointer:coarse){.joystick{display:block}.help{display:none}.action-btn{min-width:60px;min-height:50px}.action-btn.attack{min-width:76px}.hud-tools .tool{min-width:44px;min-height:44px}}
+    @media(pointer:coarse) and (min-width:751px){.joystick{width:96px;height:96px}.top-right{flex-wrap:wrap;justify-content:flex-end}.hud-bottom{bottom:max(12px,env(safe-area-inset-bottom))}}
+    @media(pointer:coarse) and (max-width:390px){.action-btn{min-width:51px}.action-btn.attack{min-width:65px}}
+  </style>
+</head>
+<body>
+  <canvas id="scene" aria-label="Игровое поле: двор расколотой линзы"></canvas><div id="vignette"></div>
+  <main id="menu" aria-label="Меню испытания">
+    <div class="menu-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Осколки рассвета</div>
+      <div><div class="eyebrow">Отдельный уровень · 2.5D</div><h1 class="serif">Испытание<br>линзы</h1></div>
+      <div class="rule"></div>
+      <section class="level" aria-label="Уровень"><span class="eyebrow">01 / Полный маршрут</span><h2>Путь последней линзы</h2><p>Пролом туманов → Галерея маятников → Двор линзы → Чертог стража. Проходите залы друг за другом и откройте выход после битвы.</p></section>
+      <p class="choose">Выберите героя</p>
+      <div class="heroes" role="group" aria-label="Выбор героя">
+        <button class="hero-card" type="button" data-hero="kair" aria-pressed="true"><canvas width="160" height="90" aria-hidden="true"></canvas><span class="hero-name">Кайр</span><span class="hero-trait">Копьё · ударная волна</span></button>
+        <button class="hero-card" type="button" data-hero="seira" aria-pressed="false"><canvas width="160" height="90" aria-hidden="true"></canvas><span class="hero-name">Сэйра</span><span class="hero-trait">Диски · вихрь</span></button>
+      </div>
+      <div class="actions"><button id="start" type="button" class="primary" disabled>Начать испытание</button><button id="explore" type="button" class="secondary" disabled>Осмотреть без боя</button><button id="continue" type="button" class="secondary" hidden>Продолжить</button></div>
+      <div id="loading" role="status" aria-live="polite">Загружаем двор…</div>
+      <div class="menu-foot">Тестовая сборка · отдельно от основной игры</div>
+    </div>
+  </main>
+  <section id="hud" hidden aria-label="Игровой интерфейс">
+    <div class="hud-top"><div class="status hud-panel"><div class="status-head"><strong id="heroName">Кайр</strong><span id="healthText">140 / 140</span></div><div class="bar" role="progressbar" aria-label="Здоровье героя"><i id="healthFill"></i></div><div id="objective" class="objective"></div></div><div class="top-right"><div class="stage hud-panel"><span id="wave">Волна 0 / 3</span><span id="kills">Побеждено: 0</span></div><div class="hud-tools"><button class="tool" type="button" id="zoomOut" aria-label="Уменьшить масштаб">−</button><button class="tool" type="button" id="zoomIn" aria-label="Увеличить масштаб">+</button><button class="tool" type="button" id="style" aria-pressed="true">Рисованный</button><button class="tool" type="button" id="openMenu">Меню</button></div></div></div>
+    <div id="boss" class="boss hud-panel" hidden><span class="small">Страж линзы · здоровье</span><div class="bar"><i id="bossFill"></i></div></div>
+    <div class="hud-bottom"><div class="joystick" id="joystick" aria-label="Сенсорное управление движением"><div class="joystick-knob" id="knob"></div></div><div class="help">WASD / стрелки — движение · клик — путь · J — атака · Q — умение · Пробел — рывок</div><div class="combat-buttons"><button id="attack" class="action-btn attack" type="button"><span>Атака</span><small>J</small></button><button id="cast" class="action-btn" type="button"><span>Умение</span><small id="castLabel">Q</small></button><button id="dash" class="action-btn" type="button"><span>Рывок</span><small id="dashLabel">Пробел</small></button></div></div>
+  </section>
+  <section id="ending" hidden role="dialog" aria-modal="true" aria-labelledby="endingTitle"><div class="ending-card"><div class="eyebrow">Испытание линзы</div><h2 id="endingTitle"></h2><p id="endingText"></p><div class="actions"><button id="retry" type="button" class="primary">Повторить</button><button id="endMenu" type="button" class="secondary">В меню</button></div></div></section>
+  <script>const ROOMS=[{"id":"ashen-gate","name":"Пролом туманов","spawn":[230,775],"exit":[1398,160],"map":{"width":1536,"height":1024,"title":"Пролом туманов","spawn":[230,775],"radius":9,"cell":8,"walkable":[[[65,748],[190,673],[345,635],[478,626],[556,670],[524,762],[393,826],[211,859],[64,822]],[[434,632],[601,520],[671,437],[757,407],[835,447],[807,507],[559,680],[481,705]],[[653,405],[700,322],[789,284],[925,282],[1043,305],[1148,351],[1204,405],[1172,470],[1068,517],[943,540],[818,517],[738,483],[683,455]],[[1048,324],[1145,250],[1238,191],[1284,165],[1362,189],[1328,246],[1197,355],[1137,387]],[[1114,135],[1217,100],[1348,103],[1495,120],[1526,158],[1500,199],[1374,221],[1241,196],[1132,177]],[[536,258],[586,229],[744,174],[856,176],[927,219],[877,265],[768,322],[668,334],[556,302]],[[713,331],[775,282],[869,257],[928,290],[905,338],[798,366]]],"blocked":[[[716,398],[737,383],[756,401],[757,426],[728,438],[712,421]],[[956,465],[996,454],[1026,467],[1013,489],[967,500]]],"circles":[[422,704,15],[1161,343,18]],"occluders":[],"lights":[{"x":285,"y":557,"radius":25,"color":"#ffb364"},{"x":725,"y":504,"radius":23,"color":"#ffc477"},{"x":1404,"y":110,"radius":38,"color":"#6cece5"}]},"waves":[[["skitter",833,343],["skitter",1030,431]],[["skitter",955,329],["cantor",1075,377]]],"boss":false,"hazards":[]},{"id":"gallery","name":"Галерея маятников","spawn":[223,780],"exit":[1410,143],"map":{"width":1536,"height":1024,"title":"Галерея маятников","spawn":[223,780],"radius":9,"cell":8,"walkable":[[[98,763],[163,720],[280,694],[357,710],[405,780],[344,852],[199,868],[102,828]],[[224,711],[302,631],[373,579],[443,586],[487,642],[353,766],[304,790]],[[285,582],[385,513],[536,443],[696,418],[839,406],[940,442],[959,510],[863,606],[711,671],[532,730],[359,700]],[[517,467],[529,352],[591,317],[733,228],[834,209],[916,268],[871,321],[720,395],[616,448]],[[850,444],[940,339],[1018,267],[1077,259],[1101,300],[1005,384],[937,492]],[[908,255],[1031,178],[1195,144],[1377,107],[1490,151],[1485,266],[1365,332],[1171,346],[1036,301],[942,286]]],"blocked":[[[564,581],[596,566],[624,584],[626,606],[586,618]],[[777,520],[801,506],[830,523],[819,543],[787,554]],[[1113,264],[1158,245],[1191,263],[1187,284],[1139,298]]],"circles":[[670,530,14],[928,475,16]],"occluders":[],"lights":[{"x":274,"y":575,"radius":20,"color":"#ffb970"},{"x":1088,"y":125,"radius":25,"color":"#ffd488"},{"x":1410,"y":86,"radius":32,"color":"#6be5eb"}]},"waves":[[["skitter",652,563],["cantor",834,478]],[["skitter",728,464],["cantor",1032,304],["skitter",846,548]]],"boss":false,"hazards":[{"x":490,"y":588,"x2":719,"y2":496,"width":30,"period":3.8,"duration":0.6,"damage":12},{"x":1019,"y":268,"x2":1270,"y2":199,"width":25,"period":4.4,"duration":0.6,"damage":12}]},{"id":"courtyard","name":"Двор расколотой линзы","spawn":[290,776],"exit":[982,207],"map":{"width":1536,"height":1024,"title":"Двор расколотой линзы","spawn":[290,776],"radius":9,"cell":8,"walkable":[[[171,733],[223,697],[322,706],[383,689],[415,673],[471,702],[527,727],[520,792],[474,831],[336,858],[237,831],[172,795]],[[400,677],[443,635],[623,529],[649,493],[782,516],[787,539],[740,575],[548,702],[525,742]],[[586,404],[642,291],[789,248],[856,254],[872,266],[1018,284],[1059,266],[1121,286],[1167,344],[1155,470],[1116,500],[1015,552],[832,543],[756,530],[674,501],[623,469]],[[850,278],[1028,300],[1045,204],[890,191]],[[826,171],[876,157],[966,181],[1053,177],[1122,183],[1162,211],[1118,227],[1040,224],[912,215],[842,195]],[[1092,277],[1138,235],[1219,251],[1294,278],[1351,316],[1390,357],[1386,409],[1353,450],[1267,471],[1150,475],[1137,510],[1248,511],[1358,493],[1432,444],[1458,410],[1450,365],[1398,318],[1347,285],[1267,252],[1191,230],[1134,220]],[[1117,485],[1168,471],[1245,475],[1248,511],[1140,518],[1113,502]],[[1096,277],[1130,244],[1174,247],[1236,265],[1228,281],[1161,271],[1128,300]]],"blocked":[[[640,413],[672,402],[697,417],[690,436],[664,443],[642,432]],[[1015,479],[1057,461],[1086,477],[1082,495],[1041,517],[1018,505]]],"circles":[[395,816,21],[509,793,20],[1217,295,11],[1363,371,13],[1195,483,16]],"occluders":[{"polygon":[[638,396],[659,379],[693,390],[697,422],[674,442],[645,431]],"baseY":437},{"polygon":[[1014,465],[1045,455],[1058,448],[1086,456],[1086,487],[1040,512],[1017,495]],"baseY":506},{"polygon":[[368,731],[391,718],[433,735],[435,754],[422,773],[420,842],[390,854],[369,830]],"baseY":841},{"polygon":[[1190,328],[1215,316],[1226,337],[1222,393],[1205,410],[1204,463],[1215,484],[1207,499],[1180,501],[1175,483],[1185,439],[1185,396]],"baseY":501}],"lights":[{"x":154,"y":762,"color":"#ffbf66","radius":22},{"x":503,"y":751,"color":"#ffb54f","radius":25},{"x":530,"y":375,"color":"#ffb64b","radius":24},{"x":623,"y":161,"color":"#ffc969","radius":18},{"x":849,"y":182,"color":"#ffb657","radius":19},{"x":1068,"y":212,"color":"#ffc869","radius":20},{"x":1205,"y":332,"color":"#ffc56b","radius":21},{"x":1003,"y":109,"color":"#67e1e3","radius":34}]},"waves":[[["skitter",810,325],["cantor",1060,380],["skitter",895,500]],[["skitter",740,400],["skitter",1080,320],["cantor",895,500],["cantor",1060,380]]],"boss":false,"hazards":[]},{"id":"sanctum","name":"Чертог последней линзы","spawn":[263,779],"exit":[1354,113],"map":{"width":1536,"height":1024,"title":"Чертог последней линзы","spawn":[263,779],"radius":9,"cell":8,"walkable":[[[26,759],[111,696],[276,684],[446,705],[509,787],[445,888],[263,933],[141,897],[20,842]],[[331,696],[436,598],[512,520],[586,478],[710,483],[675,557],[487,725],[432,784]],[[380,278],[486,225],[679,194],[844,205],[1033,229],[1183,295],[1225,385],[1163,492],[1026,543],[825,562],[629,533],[474,452],[377,363]],[[1188,356],[1337,365],[1428,410],[1431,466],[1338,498],[1196,460]],[[979,265],[1109,165],[1211,105],[1292,121],[1320,160],[1188,246],[1069,312]],[[1133,91],[1255,52],[1429,50],[1502,94],[1493,151],[1375,185],[1251,166],[1164,142]]],"blocked":[],"circles":[],"occluders":[],"lights":[{"x":74,"y":650,"radius":30,"color":"#ffc072"},{"x":855,"y":374,"radius":28,"color":"#76d9db"},{"x":1342,"y":100,"radius":42,"color":"#71e8e3"}]},"waves":[[["warden",881,368]]],"boss":true,"hazards":[]}];
+const MAP=ROOMS[0].map;
+const ASSETS={"maps":["assets/ashen-gate.png","assets/pendulum-gallery.png","assets/courtyard.png","assets/warden-sanctum.png"],"heroes":"assets/heroes.png","enemies":"assets/enemies.png"};
+const ART_PROVENANCE={"method": "Built-in Imagegen; original alpha PNGs embedded without network dependencies.", "map": "Four continuous authored 2.5D areas: Ashen Gate, Pendulum Gallery, Courtyard of the Shattered Lens and Warden Sanctum. Fixed orthographic 3/4 camera; basalt architecture and connected stone walkways.", "heroes": "Transparent atlas of original adult heroes Kair (cobalt bronze spear sentinel) and Seira (teal disc hunter): idle, two strides, attack windup, release, spell cast; hand-painted in the environment style.", "enemies": "Transparent atlas of Shard Prowler, Lens Cantor and Gate Warden: idle, two strides, attack windup and release; basalt, aged bronze and turquoise glass.", "notes": "Four-room sequential trial. Simplified mode uses the same simulation and collision geometry. The repository main game remains independently playable."};
+function createNavigation(CONFIG) {
+const W=CONFIG.width,H=CONFIG.height,radius=CONFIG.radius||9,cell=CONFIG.cell||8;
+const cols=Math.ceil(W/cell),rows=Math.ceil(H/cell),walk=new Uint8Array(cols*rows);
+function inPoly(x, y, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[i], b = polygon[j];
+    if (((a[1] > y) !== (b[1] > y)) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+  }
+  return inside;
+}
+function edgeDistance2(x, y, polygon) {
+  let best = Infinity;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const a = polygon[j], b = polygon[i], dx = b[0] - a[0], dy = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+    best = Math.min(best, (x - a[0] - t * dx) ** 2 + (y - a[1] - t * dy) ** 2);
+  }
+  return best;
+}
+function inside(x, y) {
+  if (x < radius || y < radius || x > W - radius || y > H - radius) return false;
+  // A body may overlap a narrow bridge's edge, but its feet must stay on the path.
+  if (!(CONFIG.walkable || []).some(poly => inPoly(x, y, poly))) return false;
+  for (const poly of CONFIG.blocked || []) {
+    if (inPoly(x, y, poly) || edgeDistance2(x, y, poly) < radius * radius) return false;
+  }
+  for (const [cx, cy, r] of CONFIG.circles || []) {
+    if ((x - cx) ** 2 + (y - cy) ** 2 < (r + radius) ** 2) return false;
+  }
+  return true;
+}
+function clearSegment(x0, y0, x1, y1) {
+  const count = Math.max(1, Math.ceil(Math.hypot(x1-x0, y1-y0)));
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    if (!inside(x0 + (x1-x0)*t, y0 + (y1-y0)*t)) return false;
+  }
+  return true;
+}
+for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) walk[y * cols + x] = +inside(Math.min(W - 1, x * cell + cell / 2), Math.min(H - 1, y * cell + cell / 2));
+function node(x, y) { return [Math.max(0, Math.min(cols - 1, Math.floor(x / cell))), Math.max(0, Math.min(rows - 1, Math.floor(y / cell)))]; }
+function center(i) { return [i % cols * cell + cell/2, Math.floor(i / cols) * cell + cell/2]; }
+function nearestNode(x, y) {
+  const [cx, cy] = node(x, y);
+  for (let r = 0; r <= 8; r++) {
+    let best = -1, dist = Infinity;
+    for (let yy = Math.max(0, cy - r); yy <= Math.min(rows - 1, cy + r); yy++)
+      for (let xx = Math.max(0, cx - r); xx <= Math.min(cols - 1, cx + r); xx++) {
+        if (Math.max(Math.abs(xx - cx), Math.abs(yy - cy)) !== r || !walk[yy * cols + xx]) continue;
+        const d = (xx * cell + cell / 2 - x) ** 2 + (yy * cell + cell / 2 - y) ** 2;
+        if (d < dist && clearSegment(x, y, xx*cell+cell/2, yy*cell+cell/2)) { dist = d; best = yy * cols + xx; }
+      }
+    if (best >= 0) return best;
+  }
+  return -1;
+}
+// Binary-heap A*. Diagonal moves cannot cut through a blocked corner.
+function findPath(x0, y0, x1, y1) {
+  if (!inside(x1, y1)) return [];
+  if (clearSegment(x0, y0, x1, y1)) return [[x1, y1]];
+  const start = nearestNode(x0, y0), goal = nearestNode(x1, y1);
+  if (start < 0 || goal < 0) return [];
+  const n = walk.length, cost = new Float32Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), closed = new Uint8Array(n);
+  const heap = [];
+  const heuristic = i => Math.hypot(i % cols - goal % cols, Math.floor(i / cols) - Math.floor(goal / cols));
+  const push = (i, f) => { let k = heap.length; heap.push([i, f]); while (k) { const p = (k - 1) >> 1; if (heap[p][1] <= f) break; heap[k] = heap[p]; k = p; } heap[k] = [i, f]; };
+  const pop = () => { const top = heap[0], tail = heap.pop(); if (heap.length) { let k = 0; while (2*k+1 < heap.length) { let child = 2*k+1; if (child+1 < heap.length && heap[child+1][1] < heap[child][1]) child++; if (heap[child][1] >= tail[1]) break; heap[k] = heap[child]; k = child; } heap[k] = tail; } return top[0]; };
+  cost[start] = 0; push(start, heuristic(start));
+  while (heap.length) {
+    const i = pop(); if (closed[i]) continue; if (i === goal) break; closed[i] = 1;
+    const x = i % cols, y = Math.floor(i / cols);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= cols || yy >= rows) continue;
+      const next = yy * cols + xx;
+      if (!walk[next] || closed[next] || (dx && dy && (!walk[y * cols + xx] || !walk[yy * cols + x]))) continue;
+      if (!clearSegment(x*cell+cell/2, y*cell+cell/2, xx*cell+cell/2, yy*cell+cell/2)) continue;
+      const g = cost[i] + (dx && dy ? Math.SQRT2 : 1);
+      if (g < cost[next]) { cost[next] = g; prev[next] = i; push(next, g + heuristic(next)); }
+    }
+  }
+  if (goal !== start && prev[goal] < 0) return [];
+  const path = [];
+  for (let i = goal; i !== start; i = prev[i]) path.push(center(i));
+  path.reverse();
+  path.unshift(center(start));
+  path.push([x1, y1]);
+  return path;
+}
+
+return {inside, findPath, clearSegment, inPoly};
+}
+const Navigation=createNavigation(MAP);
+
+/* TrialGame combat simulation. Coordinates are map pixels; dt is seconds.
+ * Public: new TrialGame(nav, config, rng=Math.random); start(id, {peaceful});
+ * update(dt, input); attack(aim); cast(aim); dash(dx,dy); goTo(x,y).
+ * input: {dx,dy,attack,cast,dash,aim:{x,y}}. Direct attack/cast/dash calls
+ * may be used for key presses; held attack in update repeats when ready.
+ * Public arrays: enemies, projectiles, effects; hero, time, status, wave, kills.
+ * Entities: x,y,hp,maxHp,radius,facing(-1|1),action,actionTime, plus cooldowns.
+ * Projectile: x,y,vx,vy,radius,color,owner('hero'|'enemy'),life,damage.
+ * Effect: kind ('telegraph','burst','slash','hit','vortex'), shape
+ * ('circle','line','cone'), x,y,x2,y2,radius,width,angle,arc,color,time,duration.
+ * time counts down. Render telegraphs UNDER entities, bursts ABOVE entities.
+ * A line extends from x,y to x2,y2, with full width `width`. A cone points
+ * along `angle` (radians), opens by `arc`, and extends `radius` pixels.
+ */
+(function (scope) {
+  'use strict';
+  const TAU = Math.PI * 2;
+  const dist = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+  const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
+  const unit = (x,y) => { const n=Math.hypot(x,y)||1; return {x:x/n,y:y/n}; };
+  const lineDistance = (p,a,b) => {
+    const vx=b.x-a.x, vy=b.y-a.y, t=clamp(((p.x-a.x)*vx+(p.y-a.y)*vy)/(vx*vx+vy*vy||1),0,1);
+    return Math.hypot(p.x-a.x-t*vx,p.y-a.y-t*vy);
+  };
+  const angleDiff = (a,b) => Math.atan2(Math.sin(a-b),Math.cos(a-b));
+
+  class TrialGame {
+    constructor(nav, config, rng=Math.random) {
+      this.nav=nav; this.config=config; this.rng=rng;
+      this.start('kair');
+    }
+    start(heroId='kair', {peaceful=false}={}) {
+      const id=heroId==='seira'?'seira':'kair', p=this.config.spawn||[290,776];
+      this.hero={id,x:p[0],y:p[1],hp:id==='kair'?140:105,maxHp:id==='kair'?140:105,
+        radius:13,facing:1,action:'idle',actionTime:0,attackCd:0,castCd:0,dashCd:0,
+        invulnerable:0,distanceWalked:0,pending:null,path:[],pathTarget:null};
+      this.enemies=[]; this.projectiles=[]; this.effects=[];
+      this.time=0; this.status='playing'; this.wave=0; this.kills=0;
+      this.peaceful=!!peaceful; this.nextWave=0; this.nextEnemyId=1; this.bossDefeated=false;
+      this._lastDash=false; this._lastCast=false;
+      return this;
+    }
+    get objective() {
+      if(this.status==='lost') return 'Герой пал. Начните испытание заново.';
+      if(this.status==='won') return 'Испытание пройдено!';
+      if(this.peaceful) return 'Исследуйте двор расколотой линзы.';
+      if(this.bossDefeated) return 'Страж повержен. Идите к сияющему выходу на севере.';
+      if(this.wave===0) return 'Идите через мост в центральный двор.';
+      if(this.wave===1) return this.enemies.length?'Отразите первую волну врагов.':'Приготовьтесь: приближается вторая волна.';
+      if(this.wave===2) return this.enemies.length?'Одолейте вторую волну врагов.':'Приготовьтесь к появлению стража.';
+      return 'Сразите стража линзы и откройте путь к выходу.';
+    }
+    _inside(x,y) { return !!this.nav.inside(x,y); }
+    _clear(x,y,nx,ny) { return !!this.nav.clearSegment(x,y,nx,ny); }
+    _move(e,dx,dy) {
+      const length=Math.hypot(dx,dy), steps=Math.ceil(length/7), sx=dx/(steps||1),sy=dy/(steps||1);
+      let moved=0;
+      for(let i=0;i<steps;i++) {
+        if(this._inside(e.x+sx,e.y+sy)&&this._clear(e.x,e.y,e.x+sx,e.y+sy)) {e.x+=sx;e.y+=sy;moved+=Math.hypot(sx,sy);}
+        else if(this._inside(e.x+sx,e.y)&&this._clear(e.x,e.y,e.x+sx,e.y)) {e.x+=sx;moved+=Math.abs(sx);}
+        else if(this._inside(e.x,e.y+sy)&&this._clear(e.x,e.y,e.x,e.y+sy)) {e.y+=sy;moved+=Math.abs(sy);}
+        else break;
+      }
+      if(Math.abs(dx)>.02) e.facing=dx<0?-1:1;
+      return moved;
+    }
+    _effect(kind,shape,x,y,opts={}) {
+      const e={kind,shape,x,y,x2:opts.x2??x,y2:opts.y2??y,radius:opts.radius??0,
+        width:opts.width??0,angle:opts.angle??0,arc:opts.arc??TAU,color:opts.color??'#fff',
+        time:opts.duration??.3,duration:opts.duration??.3};
+      this.effects.push(e); return e;
+    }
+    _aim(e, aim, range=Infinity) {
+      if(aim&&Number.isFinite(aim.x)&&Number.isFinite(aim.y)) return aim;
+      let best=null,bestD=range;
+      for(const enemy of this.enemies) if(enemy.hp>0) {
+        const d=dist(e,enemy);
+        if(d<bestD && this._clear(e.x,e.y,enemy.x,enemy.y)) { bestD=d;best=enemy; }
+      }
+      return best||{x:e.x+e.facing*80,y:e.y};
+    }
+    _shot(owner,x,y,dx,dy,speed,damage,color,radius=6,life=1.4) {
+      const u=unit(dx,dy);
+      this.projectiles.push({x,y,vx:u.x*speed,vy:u.y*speed,radius,color,owner,life,damage});
+    }
+    goTo(x,y) {
+      if(this.status!=='playing'||!Number.isFinite(x)||!Number.isFinite(y)||!this._inside(x,y)) return false;
+      const h=this.hero, raw=this.nav.findPath(h.x,h.y,x,y);
+      if(!Array.isArray(raw)||!raw.length) return false;
+      h.path=raw.map(p=>Array.isArray(p)?{x:p[0],y:p[1]}:{x:p.x,y:p.y})
+        .filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+      h.pathTarget={x,y};
+      return h.path.length>0;
+    }
+    attack(aim=null) {
+      const h=this.hero;
+      if(this.status!=='playing'||h.attackCd>0||h.pending||h.action==='hurt') return false;
+      const target=this._aim(h,aim,h.id==='kair'?145:450);
+      const u=unit(target.x-h.x,target.y-h.y);
+      h.facing=u.x<0?-1:1; h.attackCd=h.id==='kair'?.55:.45;
+      h.action='windup'; h.actionTime=h.id==='kair'?.15:.12;
+      h.pending={kind:'attack',dx:u.x,dy:u.y};
+      return true;
+    }
+    cast(aim=null) {
+      const h=this.hero;
+      if(this.status!=='playing'||h.castCd>0||h.pending||h.action==='hurt') return false;
+      const target=this._aim(h,aim,250), u=unit(target.x-h.x,target.y-h.y);
+      let point=null;
+      if(h.id==='seira') {
+        const range=Math.min(230,dist(h,target));
+        point={x:h.x,y:h.y};
+        // Place the vortex at the furthest reachable point on the aim ray.
+        // Explicit pointer aims may be beyond a wall or outside the arena.
+        for(let s=Math.min(6,range);s<=range+0.001;s=Math.min(range,s+6)) {
+          const candidate={x:h.x+u.x*s,y:h.y+u.y*s};
+          if(!this._inside(candidate.x,candidate.y)||!this._clear(h.x,h.y,candidate.x,candidate.y))break;
+          point=candidate;
+          if(s===range)break;
+        }
+      }
+      h.castCd=h.id==='kair'?6:7;
+      h.action='cast'; h.actionTime=.28;
+      h.pending={kind:'cast',point};
+      if(point) this._effect('telegraph','circle',point.x,point.y,{radius:95,color:'#6cf4eb',duration:.28});
+      return true;
+    }
+    dash(dx,dy) {
+      const h=this.hero;
+      if(this.status!=='playing'||h.dashCd>0||h.pending||h.action==='hurt') return false;
+      const u=unit(dx,dy); if(!dx&&!dy) return false;
+      h.dashCd=1.8;h.invulnerable=Math.max(h.invulnerable,.2);
+      h.path=[];this._move(h,u.x*92,u.y*69);
+      h.action='walk';h.actionTime=.18;
+      this._effect('burst','circle',h.x,h.y,{radius:26,color:'#c8f9ff',duration:.24});
+      return true;
+    }
+    _damageEnemy(e,amount,stagger=0) {
+      if(e.hp<=0) return;
+      e.hp=Math.max(0,e.hp-amount);
+      this._effect('hit','circle',e.x,e.y,{radius:18,color:'#ffe4a7',duration:.22});
+      if(e.hp===0) {
+        e.action='dead';e.actionTime=.4;e.pending=null;this.kills++;
+        if(e.type==='warden')this.bossDefeated=true;
+        this._effect('burst','circle',e.x,e.y,{radius:e.type==='warden'?75:32,color:'#ffe098',duration:.6});
+      } else if(stagger>0) {
+        e.stagger=Math.max(e.stagger,stagger);e.pending=null;e.action='hurt';e.actionTime=Math.min(stagger,.36);
+      }
+    }
+    _damageHero(amount) {
+      const h=this.hero;
+      if(this.status!=='playing'||h.invulnerable>0) return false;
+      h.hp=Math.max(0,h.hp-amount);h.invulnerable=.45;
+      h.pending=null;h.action=h.hp?'hurt':'dead';h.actionTime=h.hp?.33:Infinity;
+      this._effect('hit','circle',h.x,h.y,{radius:25,color:'#ff657b',duration:.25});
+      if(!h.hp)this.status='lost';
+      return true;
+    }
+    _resolveHero() {
+      const h=this.hero,p=h.pending;if(!p)return;
+      h.pending=null;
+      if(p.kind==='cast') {
+        if(h.id==='kair') {
+          const wave=this._effect('burst','circle',h.x,h.y,{radius:140,color:'#6de9ff',duration:.42});
+          for(const e of this.enemies) if(e.hp>0&&dist(h,e)<=140+e.radius&&this._clear(h.x,h.y,e.x,e.y))this._damageEnemy(e,35,.8);
+          void wave;
+        } else {
+          const point=p.point;
+          const v=this._effect('vortex','circle',point.x,point.y,{radius:95,color:'#6cf4eb',duration:4});v.tick=0;
+        }
+      } else if(h.id==='kair') {
+        const angle=Math.atan2(p.dy,p.dx);
+        this._effect('slash','cone',h.x,h.y,{radius:110,angle,arc:1.8,color:'#fff0af',duration:.23});
+        for(const e of this.enemies) if(e.hp>0&&dist(h,e)<=110+e.radius&&
+          Math.abs(angleDiff(Math.atan2(e.y-h.y,e.x-h.x),angle))<.9&&this._clear(h.x,h.y,e.x,e.y))this._damageEnemy(e,24);
+      } else {
+        this._shot('hero',h.x+p.dx*18,h.y+p.dy*18,p.dx,p.dy,390,18,'#70f5f3',6,440/390);
+      }
+      h.action=p.kind==='attack'?'attack':'cast';h.actionTime=p.kind==='attack'?.2:.3;
+    }
+    _spawn(type,x,y) {
+      if(!this._inside(x,y)) {
+        // Spawn points are deliberately authored in walkable terrain; this
+        // fallback lets small map revisions remain playable.
+        let found=false;
+        for(let r=8;r<=96&&!found;r+=8)for(let a=0;a<TAU;a+=Math.PI/8) {
+          const xx=x+Math.cos(a)*r,yy=y+Math.sin(a)*r;
+          if(this._inside(xx,yy)){x=xx;y=yy;found=true;break;}
+        }
+        if(!found)return null;
+      }
+      const hp=type==='skitter'?55:type==='cantor'?48:340;
+      const e={id:this.nextEnemyId++,type,x,y,hp,maxHp:hp,radius:type==='warden'?24:type==='cantor'?16:14,
+        facing:-1,action:'idle',actionTime:0,attackCd:type==='warden'?1.5:.7,
+        stagger:0,slow:0,path:[],pathTime:0,pending:null,phase:0};
+      this.enemies.push(e);return e;
+    }
+    _launchWave(n) {
+      this.wave=n;this.nextWave=0;
+      if(n===1) {this._spawn('skitter',810,325);this._spawn('skitter',895,500);this._spawn('cantor',1060,380);}
+      if(n===2) {this._spawn('skitter',740,400);this._spawn('skitter',1080,320);this._spawn('cantor',895,500);this._spawn('cantor',1060,380);}
+      if(n===3) this._spawn('warden',960,340);
+      this._effect('burst','circle',885,394,{radius:90,color:n===3?'#ffad82':'#e6acff',duration:.8});
+    }
+    _enemyWindup(e,kind,duration) {
+      const h=this.hero,u=unit(h.x-e.x,h.y-e.y),a=Math.atan2(u.y,u.x);
+      e.action='windup';e.actionTime=duration;e.pending={kind,dx:u.x,dy:u.y,target:{x:h.x,y:h.y}};
+      if(kind==='slam')this._effect('telegraph','circle',e.x,e.y,{radius:120,color:'#ff674a',duration});
+      else if(kind==='dash'||kind==='skitter')this._effect('telegraph','line',e.x,e.y,
+        {x2:e.x+u.x*(kind==='dash'?155:85),y2:e.y+u.y*(kind==='dash'?155:85)*.82,width:kind==='dash'?45:32,color:'#ff745d',duration});
+      else this._effect('telegraph','cone',e.x,e.y,{radius:kind==='fan'?280:310,angle:a,arc:kind==='fan'?.9:.4,color:'#e783ff',duration});
+    }
+    _resolveEnemy(e) {
+      const p=e.pending;if(!p||e.hp<=0)return;e.pending=null;
+      if(p.kind==='slam') {
+        this._effect('burst','circle',e.x,e.y,{radius:120,color:'#ff795c',duration:.35});
+        if(dist(e,this.hero)<120+this.hero.radius&&this._clear(e.x,e.y,this.hero.x,this.hero.y))this._damageHero(24);
+      } else if(p.kind==='dash'||p.kind==='skitter') {
+        const from={x:e.x,y:e.y},range=p.kind==='dash'?155:85;
+        this._move(e,p.dx*range,p.dy*range*.82);
+        this._effect('slash','line',from.x,from.y,{x2:e.x,y2:e.y,width:p.kind==='dash'?45:32,color:'#ff806b',duration:.27});
+        if(lineDistance(this.hero,from,e)<(p.kind==='dash'?35:29)&&this._clear(from.x,from.y,this.hero.x,this.hero.y))this._damageHero(p.kind==='dash'?20:10);
+      } else {
+        const fan=p.kind==='fan', spread=fan?.16:.13,number=fan?5:3;
+        const angle=Math.atan2(p.dy,p.dx);
+        for(let i=0;i<number;i++) {
+          const a=angle+(i-(number-1)/2)*spread;
+          this._shot('enemy',e.x+Math.cos(a)*20,e.y+Math.sin(a)*20,Math.cos(a),Math.sin(a),
+            fan?215:205,fan?13:10,fan?'#ff9c83':'#dca0ff',fan?7:6,1.7);
+        }
+      }
+      e.action='attack';e.actionTime=.36;
+    }
+    _enemyMove(e,dt,desired) {
+      const h=this.hero,d=dist(e,h);
+      if(e.type==='cantor'&&d<115) {
+        const away=unit(e.x-h.x,e.y-h.y);
+        if(this._move(e,away.x*55*dt,away.y*55*dt*.75)>0)e.action='walk';
+        return;
+      }
+      if(d<=desired) return;
+      let target=h;
+      if(!this._clear(e.x,e.y,h.x,h.y)) {
+        e.pathTime-=dt;
+        if(e.pathTime<=0) {
+          e.pathTime=.5+this.rng()*.2;
+          const path=this.nav.findPath(e.x,e.y,h.x,h.y);
+          e.path=Array.isArray(path)?path.map(p=>Array.isArray(p)?{x:p[0],y:p[1]}:p):[];
+        }
+        while(e.path.length&&dist(e,e.path[0])<13)e.path.shift();
+        if(e.path.length)target=e.path[0];
+        else return;
+      }
+      const u=unit(target.x-e.x,target.y-e.y),speed=e.type==='skitter'?80:e.type==='cantor'?55:48;
+      const factor=e.slow>0?.55:1;
+      if(this._move(e,u.x*speed*dt*factor,u.y*speed*dt*.75*factor)>0) e.action='walk';
+    }
+    _updateEnemy(e,dt) {
+      if(e.hp<=0)return;
+      e.attackCd=Math.max(0,e.attackCd-dt);e.stagger=Math.max(0,e.stagger-dt);e.slow=Math.max(0,e.slow-dt);
+      if(e.actionTime>0) {
+        e.actionTime-=dt;
+        if(e.actionTime<=0) {
+          if(e.pending)this._resolveEnemy(e);
+          else e.action='idle';
+        }
+      }
+      if(e.pending||e.stagger>0)return;
+      const d=dist(e,this.hero);
+      if(e.attackCd<=0) {
+        if(e.type==='skitter'&&d<105) {e.attackCd=1.55;this._enemyWindup(e,'skitter',.6);return;}
+        if(e.type==='cantor'&&d<315&&this._clear(e.x,e.y,this.hero.x,this.hero.y)) {e.attackCd=2.4;this._enemyWindup(e,'shot',.9);return;}
+        if(e.type==='warden'&&d<330) {
+          const kind=e.phase++%3===0&&d<165?'slam':e.phase%3===0?'dash':'fan';
+          e.attackCd=kind==='slam'?2.5:kind==='dash'?2.8:2.45;
+          this._enemyWindup(e,kind,kind==='slam'?1.15:kind==='dash'?.7:.8);return;
+        }
+      }
+      if(e.action==='attack'&&e.actionTime>0)return;
+      this._enemyMove(e,dt,e.type==='cantor'?165:e.type==='warden'?105:54);
+      if(e.action==='walk'&&d<58)e.action='idle';
+    }
+    _updateProjectiles(dt) {
+      for(const p of this.projectiles) {
+        p.life-=dt;if(p.life<=0)continue;
+        const dx=p.vx*dt,dy=p.vy*dt,steps=Math.ceil(Math.hypot(dx,dy)/9);
+        for(let i=0;i<steps&&p.life>0;i++) {
+          const nx=p.x+dx/steps,ny=p.y+dy/steps;
+          if(!this._inside(nx,ny)||!this._clear(p.x,p.y,nx,ny)){p.life=0;break;}
+          p.x=nx;p.y=ny;
+          if(p.owner==='hero') {
+            const hit=this.enemies.find(e=>e.hp>0&&dist(p,e)<p.radius+e.radius);
+            if(hit){this._damageEnemy(hit,p.damage);p.life=0;}
+          } else if(dist(p,this.hero)<p.radius+this.hero.radius) {
+            this._damageHero(p.damage);p.life=0;
+          }
+        }
+      }
+      this.projectiles=this.projectiles.filter(p=>p.life>0);
+    }
+    _updateEffects(dt) {
+      for(const e of this.effects) {
+        if(e.kind==='vortex') {
+          e.tick+=dt;
+          while(e.tick>=.25) {
+            e.tick-=.25;
+            for(const foe of this.enemies)if(foe.hp>0&&dist(e,foe)<e.radius+foe.radius) {
+              this._damageEnemy(foe,2);foe.slow=Math.max(foe.slow,.35);
+            }
+          }
+        }
+        e.time-=dt;
+      }
+      this.effects=this.effects.filter(e=>e.time>0);
+    }
+    update(rawDt,input={}) {
+      if(this.status!=='playing')return;
+      const dt=clamp(Number(rawDt)||0,0,.05);if(!dt)return;
+      this.time+=dt;
+      const h=this.hero;
+      h.attackCd=Math.max(0,h.attackCd-dt);h.castCd=Math.max(0,h.castCd-dt);
+      h.dashCd=Math.max(0,h.dashCd-dt);h.invulnerable=Math.max(0,h.invulnerable-dt);
+      if(h.actionTime>0) {
+        h.actionTime-=dt;
+        if(h.actionTime<=0) {if(h.pending)this._resolveHero();else h.action='idle';}
+      }
+      let dx=Number(input.dx)||0,dy=Number(input.dy)||0;
+      if(dx||dy)h.path=[];
+      else if(h.path.length) {
+        while(h.path.length&&dist(h,h.path[0])<=1.5)h.path.shift();
+        if(h.path.length){dx=h.path[0].x-h.x;dy=(h.path[0].y-h.y)/.75;}
+      }
+      if(input.dash&&!this._lastDash)this.dash(dx||h.facing,dy);
+      if(input.cast&&!this._lastCast)this.cast(input.aim||null);
+      this._lastDash=!!input.dash;this._lastCast=!!input.cast;
+      if(input.attack)this.attack(input.aim||null);
+      if((dx||dy)&&!h.pending&&h.action!=='hurt') {
+        const u=unit(dx,dy),speed=110*(h.id==='seira'&&h.action==='attack'?.8:1);
+        const step=h.path.length?Math.min(speed*dt,Math.hypot(dx,dy)):speed*dt;
+        const walked=this._move(h,u.x*step,u.y*step*.75);
+        h.distanceWalked+=walked;
+        if(walked>0&&h.action==='idle')h.action='walk';
+      } else if(h.action==='walk'&&h.actionTime<=0)h.action='idle';
+
+      if(!this.peaceful) {
+        if(this.wave===0&&h.x>730&&h.y<560)this._launchWave(1);
+        for(const e of this.enemies)this._updateEnemy(e,dt);
+      }
+      this._updateProjectiles(dt);
+      this._updateEffects(dt);
+      if(this.status==='lost')return;
+      if(!this.peaceful&&this.wave>0&&this.wave<3) {
+        this.enemies=this.enemies.filter(e=>e.hp>0);
+        if(!this.enemies.length) {
+          if(!this.nextWave)this.nextWave=this.time+(this.wave===1?1.5:2);
+          if(this.time>=this.nextWave)this._launchWave(this.wave+1);
+        }
+      } else if(this.bossDefeated)this.enemies=this.enemies.filter(e=>e.hp>0);
+      if(this.bossDefeated&&Math.hypot(h.x-982,h.y-207)<33)this.status='won';
+    }
+  }
+  scope.TrialGame=TrialGame;
+})(typeof window==='undefined'?globalThis:window);
+
+/* Four connected rooms using TrialGame's movement, attacks and enemy AI. */
+(function (scope) {
+  'use strict';
+
+  const distanceToSegment = (x, y, hazard) => {
+    const vx=hazard.x2-hazard.x, vy=hazard.y2-hazard.y;
+    const t=Math.max(0,Math.min(1,((x-hazard.x)*vx+(y-hazard.y)*vy)/(vx*vx+vy*vy||1)));
+    return Math.hypot(x-hazard.x-t*vx,y-hazard.y-t*vy);
+  };
+
+  class CampaignGame extends scope.TrialGame {
+    constructor(rooms=ROOMS, rng=Math.random) {
+      if (!Array.isArray(rooms) || !rooms.length) throw new Error('Campaign needs at least one room');
+      super(createNavigation(rooms[0].map),rooms[0].map,rng);
+      this.rooms=rooms;
+      this.start('kair');
+    }
+
+    start(heroId='kair', {peaceful=false}={}) {
+      // TrialGame invokes start from its constructor, before rooms is assigned.
+      if (!this.rooms) return super.start(heroId,{peaceful});
+      this.roomIndex=0;
+      this.room=this.currentRoom=this.rooms[0];
+      this.config=this.room.map;
+      this.nav=createNavigation(this.config);
+      super.start(heroId,{peaceful});
+      this.hero.x=this.room.spawn[0];this.hero.y=this.room.spawn[1];
+      this.exitOpen=this.peaceful;
+      this.stageTransitionSeconds=0;
+      this._resetHazards();
+      return this;
+    }
+
+    get objective() {
+      if (!this.rooms) return super.objective;
+      if (this.status==='won') return 'Линза восстановлена. Все залы пройдены!';
+      if (this.status==='lost') return 'Герой пал. Начните путешествие заново.';
+      const name=this.room.name||`Зал ${this.roomIndex+1}`;
+      if (this.peaceful) return `${name}: исследуйте зал и пройдите к сияющему выходу.`;
+      if (this.exitOpen) return `${name}: путь открыт. Идите к сияющему выходу.`;
+      if (this.room.boss) return this.wave===0
+        ? `${name}: войдите в зал стража.`
+        : `${name}: одолейте стража линзы.`;
+      if (this.wave===0) return `${name}: войдите в центр зала.`;
+      if (this.enemies.some(e=>e.hp>0)) return `${name}: одолейте врагов (${Math.min(this.wave,2)}/2).`;
+      return `${name}: приготовьтесь к следующей волне.`;
+    }
+
+    _resetHazards() {
+      this._hazards=(this.room.hazards||[]).map(h=>({
+        config:h, period:Math.max(1,Number(h.period)||3),
+        next:this.time+Math.max(1,Number(h.period)||3), warned:false, active:false,
+        lastHit:-Infinity
+      }));
+    }
+
+    _launchWave(n) {
+      if (!this.rooms) return super._launchWave(n);
+      if (this.peaceful || this.exitOpen) return;
+      const room=this.room;
+      if (n>2 || (room.boss && n>1)) {
+        this.wave=3;this.nextWave=0;
+        if (!room.boss) this.exitOpen=true;
+        return;
+      }
+      this.wave=n;this.nextWave=0;
+      let entries=room.waves?.[n-1]||[];
+      if (room.boss) entries=entries.filter(([type])=>type==='warden');
+      if (room.boss && !entries.length) entries=[['warden',960,340]];
+      for (const [type,x,y] of entries) this._spawn(type,x,y);
+      this._effect('burst','circle',room.boss?960:885,394,{
+        radius:85,color:room.boss?'#ffad82':'#e6acff',duration:.8
+      });
+    }
+
+    _updateHazards() {
+      if (this.peaceful) return;
+      for (const state of this._hazards) {
+        const h=state.config, warning=Math.min(.8,state.period-.1);
+        if (!state.warned && this.time>=state.next-warning) {
+          state.warned=true;
+          this._effect('telegraph','line',h.x,h.y,{
+            x2:h.x2,y2:h.y2,width:h.width,color:'#ff9b65',duration:warning
+          });
+        }
+        if (!state.active && this.time>=state.next) {
+          state.active=true;
+          this._effect('slash','line',h.x,h.y,{
+            x2:h.x2,y2:h.y2,width:h.width,color:'#ff6956',duration:h.duration??.5
+          });
+        }
+        if (state.active && this.time<state.next+(h.duration??.5) &&
+            this.time-state.lastHit>=.45 &&
+            distanceToSegment(this.hero.x,this.hero.y,h)<=h.width/2+this.hero.radius) {
+          if (this._damageHero(h.damage??12)) state.lastHit=this.time;
+        }
+        if (state.active && this.time>=state.next+(h.duration??.5)) {
+          state.next+=state.period;
+          // Large dt gaps can never accumulate a backlog of effects.
+          while (state.next<=this.time) state.next+=state.period;
+          state.warned=false;state.active=false;
+        }
+      }
+    }
+
+    _enterRoom(index) {
+      const prior=this.hero;
+      this.roomIndex=index;
+      this.room=this.currentRoom=this.rooms[index];
+      this.config=this.room.map;
+      this.nav=createNavigation(this.config);
+      prior.x=this.room.spawn[0];prior.y=this.room.spawn[1];
+      prior.hp=Math.min(prior.maxHp,prior.hp+15);
+      prior.path=[];prior.pathTarget=null;prior.pending=null;
+      prior.action='idle';prior.actionTime=0;
+      prior.invulnerable=Math.max(prior.invulnerable,.65);
+      this.enemies=[];this.projectiles=[];this.effects=[];
+      this.wave=0;this.nextWave=0;this.bossDefeated=false;
+      this.exitOpen=this.peaceful;
+      this.stageTransitionSeconds=1.2;
+      this._resetHazards();
+    }
+
+    update(rawDt,input={}) {
+      if (this.status!=='playing') return;
+      const dt=Math.max(0,Math.min(.05,Number(rawDt)||0));
+      if (!dt) return;
+      this.stageTransitionSeconds=Math.max(0,this.stageTransitionSeconds-dt);
+      // The boss enters sooner than the generic TrialGame arena trigger.
+      if (!this.peaceful && this.room.boss && this.wave===0 &&
+          this.hero.x>700 && this.hero.y<600) this._launchWave(1);
+      super.update(dt,input);
+      // TrialGame's single-room shrine is not the campaign's exit.
+      if (this.status==='won') this.status='playing';
+      if (this.status!=='playing') return;
+      if (!this.peaceful) {
+        this._updateHazards();
+        if (this.status!=='playing') return;
+        if (this.room.boss) {
+          if (this.bossDefeated) {
+            this.enemies=this.enemies.filter(e=>e.hp>0);
+            this.exitOpen=true;this.wave=3;this.nextWave=0;
+          }
+        } else if (this.wave===2 && !this.enemies.some(e=>e.hp>0)) {
+          this.enemies=[];this.wave=3;this.nextWave=0;this.exitOpen=true;
+        }
+      }
+      const [x,y]=this.room.exit;
+      if (this.exitOpen && Math.hypot(this.hero.x-x,this.hero.y-y)<=35) {
+        if (this.roomIndex+1===this.rooms.length) this.status='won';
+        else this._enterRoom(this.roomIndex+1);
+      }
+    }
+  }
+
+  scope.CampaignGame=CampaignGame;
+})(typeof window==='undefined'?globalThis:window);
+
+/* Painted atlas frames + fixed-camera presentation. Original PNGs keep their alpha. */
+(function(scope){
+  'use strict';
+  const TAU=Math.PI*2;
+  const SPECS={
+    kair:{atlas:'heroes',scale:.205,frames:[[27,64,209,432,144,495],[268,80,225,416,388,495],[506,110,228,385,634,495],[711,27,255,470,849,496],[941,132,368,353,1107,484],[1260,71,261,421,1384,491]]},
+    seira:{atlas:'heroes',scale:.205,frames:[[40,577,208,397,143,974],[280,585,209,391,391,976],[507,594,208,380,618,974],[738,538,248,438,852,976],[953,605,356,363,1106,968],[1269,600,237,376,1392,976]]},
+    skitter:{atlas:'enemies',scale:.20,frames:[[34,74,276,228,179,302],[332,87,283,217,478,304],[628,75,251,229,769,304],[908,30,278,283,1061,313],[1178,74,335,255,1350,329]]},
+    cantor:{atlas:'enemies',scale:.235,frames:[[56,333,179,300,145,633],[363,333,186,298,450,631],[662,329,172,306,745,635],[941,293,236,333,1060,626],[1242,347,237,271,1365,618]]},
+    warden:{atlas:'enemies',scale:.325,frames:[[19,648,276,342,155,990],[311,648,304,338,465,986],[627,657,277,333,771,990],[905,632,312,358,1070,990],[1220,706,301,286,1370,992]]}
+  };
+  const surface=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;};
+  const polygon=(ctx,p)=>{ctx.beginPath();p.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();};
+  function prepareAtlas(image,specs){
+    const source=surface(image.naturalWidth,image.naturalHeight),g=source.getContext('2d',{willReadFrequently:true});
+    g.drawImage(image,0,0);const raw=g.getImageData(0,0,source.width,source.height),rgba=raw.data;
+    const W=source.width,H=source.height,labels=new Uint32Array(W*H),queue=new Uint32Array(W*H);
+    let id=0;
+    // Atlas poses have irregular outlines; label separate bodies to avoid a
+    // neighbour's spear leaking into an adjacent frame's rectangular crop.
+    for(let index=0;index<labels.length;index++){
+      if(labels[index]||rgba[index*4+3]<130)continue;
+      let start=0,end=1;queue[0]=index;labels[index]=++id;
+      while(start<end){const i=queue[start++],x=i%W,y=(i/W)|0;
+        for(const n of [x?i-1:-1,x<W-1?i+1:-1,y?i-W:-1,y<H-1?i+W:-1]){
+          if(n>=0&&!labels[n]&&rgba[n*4+3]>=130){labels[n]=id;queue[end++]=n;}
+        }
+      }
+    }
+    for(const spec of specs){spec.sprites=spec.frames.map(([x,y,w,h,ax,ay])=>{
+      const votes=new Map();
+      for(let yy=y;yy<y+h;yy++)for(let xx=x;xx<x+w;xx++){const label=labels[yy*W+xx];if(label)votes.set(label,(votes.get(label)||0)+1);}
+      const body=[...votes].sort((a,b)=>b[1]-a[1])[0]?.[0];
+      const left=Math.max(0,x-4),top=Math.max(0,y-4),cw=Math.min(W-left,w+8),ch=Math.min(H-top,h+8);
+      const c=surface(cw,ch),cg=c.getContext('2d'),out=cg.createImageData(cw,ch);
+      for(let yy=0;yy<ch;yy++)for(let xx=0;xx<cw;xx++){
+        const sx=left+xx,sy=top+yy,i=sy*W+sx,k=(yy*cw+xx)*4;
+        let keep=labels[i]===body;
+        if(!keep&&rgba[i*4+3]){
+          for(let dy=-2;dy<=2&&!keep;dy++)for(let dx=-2;dx<=2&&!keep;dx++){
+            const nx=sx+dx,ny=sy+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H&&labels[ny*W+nx]===body)keep=true;
+          }
+        }
+        if(keep){out.data[k]=rgba[i*4];out.data[k+1]=rgba[i*4+1];out.data[k+2]=rgba[i*4+2];out.data[k+3]=rgba[i*4+3];}
+      }
+      cg.putImageData(out,0,0);
+      const tint=color=>{const mask=surface(cw,ch),m=mask.getContext('2d');m.drawImage(c,0,0);m.globalCompositeOperation='source-in';m.fillStyle=color;m.fillRect(0,0,cw,ch);return mask;};
+      return {image:c,ghost:tint('#83fae7'),hurt:tint('#ffc5a5'),ax:ax-left,ay:ay-top,w:cw,h:ch};
+    });}
+  }
+  class TrialRenderer{
+    constructor(canvas,map,nav,images){
+      this.canvas=canvas;this.ctx=canvas.getContext('2d');this.map=map;this.nav=nav;this.images=images;
+      this.specs=structuredClone(SPECS);this.zoom=window.innerWidth<650?2.6:1.35;this.lastRoomIndex=0;
+      prepareAtlas(images.heroes,[this.specs.kair,this.specs.seira]);
+      prepareAtlas(images.enemies,[this.specs.skitter,this.specs.cantor,this.specs.warden]);
+      this.flat=this.flatMap();this.scale=1;this.ox=0;this.oy=0;this.resize();
+    }
+    flatMap(){
+      const c=surface(this.map.width,this.map.height),g=c.getContext('2d');
+      g.fillStyle='#142025';g.fillRect(0,0,c.width,c.height);
+      g.fillStyle='#40575b';for(const p of this.map.walkable){polygon(g,p);g.fill();}
+      g.save();g.beginPath();for(const p of this.map.walkable){p.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();}g.clip();
+      g.strokeStyle='#7b938126';g.lineWidth=1;for(let x=0;x<c.width;x+=48){g.beginPath();g.moveTo(x,0);g.lineTo(x,c.height);g.stroke();}for(let y=0;y<c.height;y+=48){g.beginPath();g.moveTo(0,y);g.lineTo(c.width,y);g.stroke();}g.restore();
+      g.fillStyle='#8a826c';for(const p of this.map.blocked||[]){polygon(g,p);g.fill();}
+      for(const [x,y,r] of this.map.circles||[]){g.beginPath();g.arc(x,y,r,0,TAU);g.fill();}
+      return c;
+    }
+    resize(){
+      const r=this.canvas.getBoundingClientRect();this.width=r.width||window.innerWidth;this.height=r.height||window.innerHeight;
+      this.dpr=Math.min(2,window.devicePixelRatio||1);this.canvas.width=Math.round(this.width*this.dpr);this.canvas.height=Math.round(this.height*this.dpr);
+      this.ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
+    }
+    zoomBy(n){this.zoom=Math.max(1,Math.min(3.5,this.zoom+n));}
+    worldPoint(x,y){const r=this.canvas.getBoundingClientRect();return{x:(x-r.left-this.ox)/this.scale,y:(y-r.top-this.oy)/this.scale};}
+    frameFor(e){
+      const spec=this.specs[e.type||e.id];let frame=0;
+      if(e.action==='walk')frame=1+(Math.floor((e.distanceWalked??this.time*80)/18)%2);
+      if(e.action==='windup')frame=3;
+      if(e.action==='attack')frame=4;
+      if(e.action==='cast')frame=spec.frames.length-1;
+      return{spec,frame:spec.sprites[frame]};
+    }
+    drawPortrait(canvas,id){const box=canvas.getBoundingClientRect();if(box.width&&box.height){canvas.width=Math.round(box.width*this.dpr);canvas.height=Math.round(box.height*this.dpr);}const g=canvas.getContext('2d');g.clearRect(0,0,canvas.width,canvas.height);const s=this.specs[id],f=s.sprites[0];const fit=Math.min(canvas.width/(f.w+28),canvas.height/(f.h+8));g.drawImage(f.image,(canvas.width-f.w*fit)/2,canvas.height-f.h*fit,f.w*fit,f.h*fit);}
+    sprite(e,ghost=false){
+      const c=this.ctx,{spec,frame}=this.frameFor(e),s=spec.scale;
+      c.save();c.translate(e.x,e.y);c.scale(e.facing||1,1);
+      if(e.action==='dead'){c.rotate(-.8);c.globalAlpha=.5;}
+      const src=ghost?frame.ghost:e.action==='hurt'&&Math.floor(this.time*18)%2===0?frame.hurt:frame.image;
+      c.drawImage(src,-frame.ax*s,-frame.ay*s,frame.w*s,frame.h*s);c.restore();
+    }
+    primitive(e){
+      const c=this.ctx,hero=!!e.id&&!e.type,boss=e.type==='warden',h=boss?48:hero?36:29;
+      c.save();c.translate(e.x,e.y);c.scale(e.facing||1,1);c.lineWidth=2;
+      c.fillStyle=hero?'#56b4cb':e.type==='cantor'?'#af6fc3':boss?'#ca9165':'#c07a63';c.strokeStyle='#10232c';
+      c.beginPath();c.moveTo(-12,-h+12);c.lineTo(10,-h+12);c.lineTo(14,-4);c.lineTo(-14,-4);c.closePath();c.fill();c.stroke();
+      c.beginPath();c.arc(0,-h+6,boss?12:8,0,TAU);c.fill();c.stroke();
+      c.strokeStyle='#f9dd9f';c.beginPath();c.moveTo(4,-18);c.lineTo(e.action==='attack'?38:15,-h+3);c.stroke();c.restore();
+    }
+    shadow(e){const c=this.ctx;c.save();c.fillStyle='#0007';c.shadowColor='#0007';c.shadowBlur=5;c.beginPath();c.ellipse(e.x,e.y+2,e.type==='warden'?30:e.type==='skitter'?22:17,6,0,0,TAU);c.fill();c.restore();}
+    effect(e,painted){
+      const c=this.ctx,p=1-Math.max(0,e.time/e.duration),tele=e.kind==='telegraph';
+      c.save();c.strokeStyle=e.color;c.fillStyle=e.color;c.lineWidth=tele?2:3;
+      if(painted&&!tele){c.shadowBlur=12;c.shadowColor=e.color;}
+      c.globalAlpha=tele?.14+p*.16:e.kind==='vortex'?.16:Math.max(0,(1-p)*.12);
+      c.beginPath();
+      if(e.shape==='line'){
+        const a=Math.atan2(e.y2-e.y,e.x2-e.x),dx=Math.sin(a)*e.width/2,dy=Math.cos(a)*e.width/2;
+        c.moveTo(e.x+dx,e.y-dy);c.lineTo(e.x2+dx,e.y2-dy);c.lineTo(e.x2-dx,e.y2+dy);c.lineTo(e.x-dx,e.y+dy);c.closePath();
+      }else if(e.shape==='cone'){c.moveTo(e.x,e.y);c.arc(e.x,e.y,e.radius,e.angle-e.arc/2,e.angle+e.arc/2);c.closePath();}
+      else c.arc(e.x,e.y,tele||e.kind==='vortex'?e.radius:e.radius*(.35+p*.65),0,TAU);
+      c.fill();c.globalAlpha=tele?.55+p*.4:Math.max(.15,1-p);c.stroke();
+      if(e.shape==='circle'){
+        c.beginPath();c.arc(e.x,e.y,Math.max(1,e.radius*(tele?p:.6)),this.time*2,this.time*2+Math.PI*1.3);c.stroke();
+        if(e.kind==='vortex'){for(let k=0;k<6;k++){const a=this.time*3+k*TAU/6;c.beginPath();c.moveTo(e.x+Math.cos(a)*e.radius*.8,e.y+Math.sin(a)*e.radius*.8);c.lineTo(e.x+Math.cos(a+.8)*e.radius*.3,e.y+Math.sin(a+.8)*e.radius*.3);c.stroke();}}
+      }
+      c.restore();
+    }
+    health(e){if(!e.type||e.hp<=0)return;const c=this.ctx,{spec,frame}=this.frameFor(e);const y=e.y-frame.ay*spec.scale-9,w=e.type==='warden'?70:40;c.fillStyle='#080e13d9';c.fillRect(e.x-w/2,y,w,5);c.fillStyle=e.type==='warden'?'#f2b169':'#e6756c';c.fillRect(e.x-w/2,y,w*e.hp/e.maxHp,5);}
+    occluded(e){
+      const {spec,frame}=this.frameFor(e),s=spec.scale,facing=e.facing||1;
+      const a=-frame.ax*s,b=(frame.w-frame.ax)*s,x1=e.x+Math.min(a*facing,b*facing),x2=e.x+Math.max(a*facing,b*facing),y1=e.y-frame.ay*s,y2=e.y+(frame.h-frame.ay)*s;
+      return(this.map.occluders||[]).filter(o=>{if(e.y>=o.baseY)return false;const xs=o.polygon.map(p=>p[0]),ys=o.polygon.map(p=>p[1]);return x2>=Math.min(...xs)&&x1<=Math.max(...xs)&&y2>=Math.min(...ys)&&y1<=Math.max(...ys);});
+    }
+    reveal(e){const polys=this.occluded(e);if(!polys.length)return;const c=this.ctx;c.save();c.beginPath();for(const o of polys){o.polygon.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();}c.clip();c.globalAlpha=e.type?.58:.94;c.shadowBlur=3;c.shadowColor='#92fff1';this.sprite(e,true);c.restore();}
+    render(game,{painted=true,overview=false}={}){
+      if(game.roomIndex!==undefined && this.lastRoomIndex!==game.roomIndex){
+        this.lastRoomIndex=game.roomIndex;
+        this.map=game.room.map;
+        this.images.map=this.images.maps[game.roomIndex];
+        this.flat=this.flatMap();
+      }
+      const c=this.ctx,h=game.hero;this.time=game.time;
+      const fit=Math.min(this.width/this.map.width,this.height/this.map.height);this.scale=fit*(overview?1:this.zoom);
+      const sw=this.map.width*this.scale,sh=this.map.height*this.scale;
+      this.ox=sw<=this.width?(this.width-sw)/2:Math.max(this.width-sw,Math.min(0,this.width/2-h.x*this.scale));
+      const safeTop=this.width<750?210:(game.wave===3?155:115),safeBottom=this.width<750?135:85;
+      const playHeight=Math.max(120,this.height-safeTop-safeBottom);
+      this.oy=overview?(this.height-sh)/2:sh<=playHeight?safeTop+(playHeight-sh)/2:
+        Math.max(this.height-safeBottom-sh,Math.min(safeTop,safeTop+playHeight*.6-h.y*this.scale));
+      c.setTransform(this.dpr,0,0,this.dpr,0,0);c.fillStyle='#080f17';c.fillRect(0,0,this.width,this.height);
+      c.save();c.translate(this.ox,this.oy);c.scale(this.scale,this.scale);c.drawImage(painted?this.images.map:this.flat,0,0,this.map.width,this.map.height);
+      if(painted){
+        for(let i=0;i<(this.map.lights||[]).length;i++){const l=this.map.lights[i],r=l.radius*(.8+Math.sin(this.time*9+i)*.1);const g=c.createRadialGradient(l.x,l.y,0,l.x,l.y,r);g.addColorStop(0,l.color+'80');g.addColorStop(1,l.color+'00');c.fillStyle=g;c.fillRect(l.x-r,l.y-r,r*2,r*2);}
+      }
+      if(!overview){
+        if(game.hero.path?.length){c.strokeStyle='#b9eac85c';c.lineWidth=2;c.setLineDash([4,7]);c.beginPath();c.moveTo(h.x,h.y);for(const p of h.path)c.lineTo(p.x,p.y);c.stroke();c.setLineDash([]);}
+        if(game.wave===0&&!game.peaceful){c.strokeStyle='#ceebbe';c.lineWidth=2;c.beginPath();c.ellipse(885,394,26,15,0,0,TAU);c.stroke();}
+        if(game.exitOpen){const [x,y]=game.room?.exit||[982,207];c.save();c.shadowBlur=24;c.shadowColor='#81ffde';c.strokeStyle='#a6ffe3';c.lineWidth=4;c.beginPath();c.ellipse(x,y,26+Math.sin(this.time*3)*3,14,0,0,TAU);c.stroke();c.restore();}
+      }
+      for(const e of game.effects)if(e.kind==='telegraph'||e.kind==='vortex'||e.kind==='burst')this.effect(e,painted);
+      const living=[...game.enemies,h];
+      for(const e of living)this.shadow(e);
+      // Obstacles share the same ground-depth ordering as all actors.
+      const ordered=[...living.map(e=>({y:e.y,entity:e})),...(painted?(this.map.occluders||[]).map(o=>({y:o.baseY,prop:o})):[])].sort((a,b)=>a.y-b.y);
+      for(const item of ordered){
+        if(item.prop){c.save();polygon(c,item.prop.polygon);c.clip();c.drawImage(this.images.map,0,0,this.map.width,this.map.height);c.restore();}
+        else if(painted)this.sprite(item.entity);else this.primitive(item.entity);
+      }
+      if(painted){for(const e of game.enemies)this.reveal(e);this.reveal(h);}
+      for(const p of game.projectiles){c.save();c.fillStyle=p.color;c.strokeStyle='#efffff';c.lineWidth=1.2;if(painted){c.shadowColor=p.color;c.shadowBlur=14;}c.beginPath();c.ellipse(p.x,p.y-15,p.owner==='hero'?p.radius*1.5:p.radius,p.radius*.6,this.time*9,0,TAU);c.fill();c.stroke();c.globalAlpha=.25;c.fillStyle='#081014';c.beginPath();c.ellipse(p.x,p.y+2,p.radius+1,3,0,0,TAU);c.fill();c.restore();}
+      for(const e of game.effects)if(e.kind!=='telegraph'&&e.kind!=='vortex'&&e.kind!=='burst')this.effect(e,painted);
+      for(const e of game.enemies)this.health(e);
+      c.save();c.strokeStyle=h.invulnerable>0?'#fff2c7':'#b9fff0';c.lineWidth=1.4;c.globalAlpha=.85;c.beginPath();c.ellipse(h.x,h.y+2,16,6,0,0,TAU);c.stroke();c.restore();
+      c.restore();
+    }
+  }
+  scope.TrialRenderer=TrialRenderer;
+})(typeof window==='undefined'?globalThis:window);
+
+/* UI and input adapter for the standalone Lens trial. All simulation lives in TrialGame. */
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const scene=$('scene'), menu=$('menu'), hud=$('hud'), ending=$('ending');
+  const startButton=$('start'), exploreButton=$('explore'), continueButton=$('continue');
+  const keys=new Set();
+  let game=null, renderer=null, selected='kair', painted=true, active=false;
+  let heldAttack=false, rightAttack=false, pointerAim=null, joystick={x:0,y:0};
+  let stickId=null, pressId=null, canvasPress=null, lastFrame=performance.now();
+  const images={};
+  const names={kair:'Кайр',seira:'Сэйра'};
+  const isPlaying=()=>active && menu.hidden && ending.hidden && game && game.status==='playing';
+
+  function clearInput(){
+    keys.clear();heldAttack=false;rightAttack=false;pointerAim=null;
+    joystick={x:0,y:0};stickId=null;pressId=null;canvasPress=null;
+    $('knob').style.transform='translate(-50%,-50%)';
+  }
+  function openMenu(){
+    clearInput();ending.hidden=true;hud.hidden=true;menu.hidden=false;
+    continueButton.hidden=!active || !game || game.status!=='playing';
+    continueButton.disabled=continueButton.hidden;
+    if(!continueButton.hidden) continueButton.focus();
+  }
+  function resume(){if(!active||!game||game.status!=='playing')return;menu.hidden=true;hud.hidden=false;ending.hidden=true;lastFrame=performance.now();}
+  function start(hero=selected,peaceful=false){
+    if(!game||!renderer)return;
+    selected=hero==='seira'?'seira':'kair';
+    game.start(selected,{peaceful});active=true;clearInput();resume();updateHUD();
+  }
+  function toggleStyle(){painted=!painted;$('style').textContent=painted?'Рисованный':'Упрощённый';$('style').setAttribute('aria-pressed',String(painted));return painted;}
+  function finish(){
+    if(!active||game.status==='playing'||!ending.hidden)return;
+    clearInput();hud.hidden=true;ending.hidden=false;
+    const win=game.status==='won';
+    $('endingTitle').textContent=win?'Линза пробуждена':'Путь прерван';
+    $('endingText').textContent=win?'Страж повержен. Двор снова встречает рассвет.':'Герой пал в испытании. Выберите момент и попробуйте ещё раз.';
+    $('retry').focus();
+  }
+  function movement(){
+    const x=(keys.has('KeyD')||keys.has('ArrowRight')?1:0)-(keys.has('KeyA')||keys.has('ArrowLeft')?1:0)+joystick.x;
+    const y=(keys.has('KeyS')||keys.has('ArrowDown')?1:0)-(keys.has('KeyW')||keys.has('ArrowUp')?1:0)+joystick.y;
+    const length=Math.hypot(x,y);return length>1?{dx:x/length,dy:y/length}:{dx:x,dy:y};
+  }
+  function directionForDash(){
+    const v=movement();
+    if(v.dx||v.dy)return v;
+    const h=game.hero,t=h.pathTarget;
+    if(h.path.length && t){let x=t.x-h.x,y=t.y-h.y;if(Math.hypot(x,y)>8)return {dx:x,dy:y};}
+    return {dx:h.facing,dy:0};
+  }
+  function updateHUD(){
+    if(!game)return;
+    const h=game.hero;
+    $('heroName').textContent=names[h.id];$('healthText').textContent=`${Math.ceil(h.hp)} / ${h.maxHp}`;
+    const hp=100*h.hp/h.maxHp;
+    $('healthFill').style.width=hp+'%';
+    $('healthFill').parentElement.setAttribute('aria-valuenow',String(Math.ceil(h.hp)));
+    $('healthFill').parentElement.setAttribute('aria-valuemax',String(h.maxHp));
+    $('objective').textContent=game.objective;
+    $('wave').textContent=game.peaceful?`Зал ${game.roomIndex+1} / ${game.rooms.length} · Обзор`:
+      game.room.boss?`Зал ${game.roomIndex+1} / ${game.rooms.length} · Страж`:
+      game.exitOpen?`Зал ${game.roomIndex+1} / ${game.rooms.length} · Путь открыт`:
+      `Зал ${game.roomIndex+1} / ${game.rooms.length} · Волна ${Math.min(game.wave,2)}/2`;
+    $('kills').textContent=game.peaceful?'Без боя':`Побеждено: ${game.kills}`;
+    const boss=game.enemies.find(e=>e.type==='warden'&&e.hp>0);
+    $('boss').hidden=!boss;if(boss)$('bossFill').style.width=(100*boss.hp/boss.maxHp)+'%';
+    $('castLabel').textContent=h.castCd>0?h.castCd.toFixed(1)+' с':'Q';
+    $('dashLabel').textContent=h.dashCd>0?h.dashCd.toFixed(1)+' с':'Пробел';
+    $('cast').disabled=h.castCd>0;
+    $('dash').disabled=h.dashCd>0;
+    $('attack').disabled=false;
+  }
+  function renderFrame(now){
+    requestAnimationFrame(renderFrame);
+    const dt=Math.min(Math.max((now-lastFrame)/1000,0),.05);lastFrame=now;
+    if(!renderer||!game)return;
+    try{
+      if(isPlaying()){
+        const move=movement();
+        game.update(dt,{...move,attack:heldAttack||rightAttack||keys.has('KeyJ'),aim:rightAttack?pointerAim:null});
+        if(game.status!=='playing')finish();
+        else updateHUD();
+      }
+      renderer.render(game,{painted,overview:!active});
+    }catch(error){
+      console.error('Lens trial runtime error:',error);
+      $('loading').textContent='Не удалось отобразить уровень. Перезагрузите страницу.';
+      openMenu();renderer=null;
+    }
+  }
+  const movementKeys=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight']);
+  window.addEventListener('keydown',event=>{
+    if(event.code==='Escape'){
+      if(ending.hidden){event.preventDefault();if(menu.hidden)openMenu();else resume();}
+      return;
+    }
+    if(!isPlaying())return;
+    if(movementKeys.has(event.code)||['KeyJ','KeyQ','Space'].includes(event.code))event.preventDefault();
+    if(movementKeys.has(event.code)||event.code==='KeyJ')keys.add(event.code);
+    if(event.repeat)return;
+    if(event.code==='KeyQ')game.cast();
+    if(event.code==='Space'){
+      const d=directionForDash();game.dash(d.dx,d.dy);
+    }
+  });
+  window.addEventListener('keyup',event=>keys.delete(event.code));
+  window.addEventListener('blur',()=>{if(isPlaying())openMenu();else clearInput();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){if(isPlaying())openMenu();else clearInput();lastFrame=performance.now();}});
+
+  scene.addEventListener('contextmenu',event=>event.preventDefault());
+  scene.addEventListener('pointerdown',event=>{
+    if(!isPlaying())return;
+    if(event.pointerType==='mouse'&&event.button===2){
+      rightAttack=true;pointerAim=renderer.worldPoint(event.clientX,event.clientY);
+      scene.setPointerCapture(event.pointerId);return;
+    }
+    if(event.button!==0)return;
+    canvasPress={id:event.pointerId,x:event.clientX,y:event.clientY};
+    scene.setPointerCapture(event.pointerId);
+  });
+  scene.addEventListener('pointermove',event=>{
+    if(rightAttack&&event.pointerType==='mouse')pointerAim=renderer.worldPoint(event.clientX,event.clientY);
+  });
+  scene.addEventListener('pointerup',event=>{
+    if(event.button===2){rightAttack=false;pointerAim=null;return;}
+    if(!canvasPress||canvasPress.id!==event.pointerId)return;
+    const wasTap=Math.hypot(event.clientX-canvasPress.x,event.clientY-canvasPress.y)<15;
+    canvasPress=null;
+    if(wasTap&&isPlaying()){
+      const point=renderer.worldPoint(event.clientX,event.clientY);
+      if(point&&Number.isFinite(point.x)&&Number.isFinite(point.y))game.goTo(point.x,point.y);
+    }
+  });
+  scene.addEventListener('pointercancel',()=>{canvasPress=null;rightAttack=false;pointerAim=null;});
+
+  function setStick(event){
+    const box=$('joystick').getBoundingClientRect(),cx=box.left+box.width/2,cy=box.top+box.height/2;
+    let x=(event.clientX-cx)/(box.width*.35),y=(event.clientY-cy)/(box.height*.35);
+    const m=Math.hypot(x,y);if(m>1){x/=m;y/=m;}
+    joystick={x,y};$('knob').style.transform=`translate(calc(-50% + ${x*box.width*.29}px),calc(-50% + ${y*box.height*.29}px))`;
+  }
+  $('joystick').addEventListener('pointerdown',event=>{
+    if(!isPlaying()||stickId!==null)return;
+    event.preventDefault();stickId=event.pointerId;$('joystick').setPointerCapture(stickId);setStick(event);
+  });
+  $('joystick').addEventListener('pointermove',event=>{if(event.pointerId===stickId)setStick(event);});
+  function releaseStick(event){if(event.pointerId===stickId){stickId=null;joystick={x:0,y:0};$('knob').style.transform='translate(-50%,-50%)';}}
+  $('joystick').addEventListener('pointerup',releaseStick);
+  $('joystick').addEventListener('pointercancel',releaseStick);
+  $('attack').addEventListener('pointerdown',event=>{
+    if(!isPlaying())return;
+    event.preventDefault();pressId=event.pointerId;heldAttack=true;$('attack').setPointerCapture(event.pointerId);
+  });
+  function releaseAttack(event){if(event.pointerId===pressId){heldAttack=false;pressId=null;}}
+  $('attack').addEventListener('pointerup',releaseAttack);
+  $('attack').addEventListener('pointercancel',releaseAttack);
+  $('attack').addEventListener('click',event=>{if(event.detail===0&&isPlaying())game.attack();});
+  $('cast').addEventListener('click',()=>{if(isPlaying())game.cast();});
+  $('dash').addEventListener('click',()=>{if(isPlaying()){const d=directionForDash();game.dash(d.dx,d.dy);}});
+  $('openMenu').addEventListener('click',openMenu);
+  $('style').addEventListener('click',toggleStyle);
+  $('zoomIn').addEventListener('click',()=>renderer&&renderer.zoomBy(.16));
+  $('zoomOut').addEventListener('click',()=>renderer&&renderer.zoomBy(-.16));
+  startButton.addEventListener('click',()=>start(selected,false));
+  exploreButton.addEventListener('click',()=>start(selected,true));
+  continueButton.addEventListener('click',resume);
+  $('retry').addEventListener('click',()=>start(selected,false));
+  $('endMenu').addEventListener('click',openMenu);
+  document.querySelectorAll('.hero-card').forEach(card=>card.addEventListener('click',()=>{
+    selected=card.dataset.hero;
+    document.querySelectorAll('.hero-card').forEach(button=>button.setAttribute('aria-pressed',String(button===card)));
+  }));
+
+  function drawPortraits(){
+    document.querySelectorAll('.hero-card').forEach(card=>{
+      renderer.drawPortrait(card.querySelector('canvas'),card.dataset.hero);
+    });
+  }
+  async function loadImage(url){
+    if(!url)throw Error('Отсутствует изображение уровня');
+    const img=new Image();img.src=url;
+    if(img.decode)await img.decode();
+    else await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});
+    return img;
+  }
+  async function bootstrap(){
+    try{
+      if(typeof MAP==='undefined'||typeof ROOMS==='undefined'||typeof Navigation==='undefined'||typeof CampaignGame==='undefined'||typeof TrialRenderer==='undefined'||typeof ASSETS==='undefined')throw Error('Неполная сборка уровня');
+      const loaded=await Promise.all(['heroes','enemies'].map(async name=>[name,await loadImage(ASSETS[name])]));
+      for(const [name,img] of loaded)images[name]=img;
+      images.maps=await Promise.all(ASSETS.maps.map(loadImage));images.map=images.maps[0];
+      game=new CampaignGame(ROOMS);renderer=new TrialRenderer(scene,MAP,Navigation,images);
+      renderer.resize();drawPortraits();
+      window.addEventListener('resize',()=>{if(renderer){renderer.resize();drawPortraits();}});
+      startButton.disabled=false;exploreButton.disabled=false;$('loading').textContent='';
+      requestAnimationFrame(renderFrame);
+    }catch(error){
+      console.error('Lens trial loading error:',error);
+      $('loading').textContent='Не удалось загрузить уровень. Перезагрузите страницу.';
+    }
+  }
+  window.LensApp={get game(){return game;},get renderer(){return renderer;},get painted(){return painted;},start,openMenu,toggleStyle};
+  bootstrap();
+})();
+</script>
+  <script>/* app.js is appended after the bundled map, navigation, combat and renderer. */</script>
+</body>
+</html>
