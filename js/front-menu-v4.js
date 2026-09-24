@@ -12,8 +12,8 @@ function layout(w=1024,h=640,saved=false){
     const boxes=HEROES.map((hero,i)=>({id:'hero-'+hero.id,hero:hero.id,label:hero.name+' — '+hero.title,x:x+i*(cardW+8*unit),y:rosterY,w:cardW,h:cardH}));
     boxes.push({id:saved?'continue':'new',label:saved?'Продолжить поход':'Начать поход',x,y:mainY,w:bwidth,h:buttonH,primary:true});
     boxes.push({id:saved?'new':'amber',label:saved?'Новый поход':'Некрополь · этаж VII',x,y:mainY+buttonH+12*unit,w:bwidth,h:(portrait?76:44)*unit});
-    const footerY=mainY+buttonH+(portrait?112:68)*unit,footerItems=['camp','help','campaign','floors','archive'],fw=(bwidth-32*unit)/footerItems.length;
-    for(const [i,id] of footerItems.entries())boxes.push({id,label:id==='camp'?'Лагерь':id==='help'?'Помощь':id==='campaign'?'Кампания':id==='floors'?'Этажи':'Архив',x:x+i*(fw+8*unit),y:footerY,w:fw,h:(portrait?72:44)*unit,quiet:true});
+    const footerY=mainY+buttonH+(portrait?112:68)*unit,footerItems=['camp','help','campaign','floors','lens','archive'],fw=(bwidth-(footerItems.length-1)*8*unit)/footerItems.length;
+    for(const [i,id] of footerItems.entries())boxes.push({id,label:id==='camp'?'Лагерь':id==='help'?'Помощь':id==='campaign'?'Кампания':id==='floors'?'Этажи':id==='lens'?'2.5D':'Архив',x:x+i*(fw+8*unit),y:footerY,w:fw,h:(portrait?72:44)*unit,quiet:true});
     return {w,h,portrait,wide,unit,x,bwidth,rosterY,cardH,mainY,boxes,heroX:portrait?w*.66:w*.745,heroY:portrait?rosterY-30*unit:h*.79,heroHeight:portrait?335*unit:300*unit};
   }
   function text(c,label,x,y,size,color='#e9debf',align='left',serif=false){c.font=(serif?'':'500 ')+size+'px '+(serif?'Georgia, serif':'Arial, sans-serif');c.fillStyle=color;c.textAlign=align;c.textBaseline='middle';c.fillText(label,x,y);}
@@ -88,6 +88,7 @@ UI.prototype.frontAction=function(id){
   else if(id==='campaign')this.showHeroSelect();
   else if(id==='camp')this.showCamp('upgrades');
   else if(id==='help'||id==='about')this.showExpeditionHelp();
+  else if(id==='lens'){window.location.href='lens-trial/';}
   else if(id==='archive'){window.location.href='archive.html';}
 };
 UI.prototype.showExpeditionFloors=function(heroId){
