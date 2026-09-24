@@ -1,40 +1,25 @@
-# Original articulated hero additions
+# Rebuilding the five hero rigs
 
-Three new original character designs, using the shared hero rig drawing primitives.
-Legacy game IDs remain stable for saved games; presentation names are new.
-
-| ID | Name | Design |
-|---|---|---|
-| `baldin` | Таррок | Broad copper armored axe fighter |
-| `mithrandir` | Элира | Slender glass rune caster with a white crest |
-| `peregrin` | Шелт | Compact masked scout with goggles and two knives |
-
-Each `assets/<id>/sprite-sheet-alpha.png` is a genuine transparent RGBA atlas,
-1536 × 960 px, with 8 columns and 5 rows. Cells are 192 × 192 px.
-Characters face right; mirror the whole frame to face left.
-Foot anchor: `(88, 178)` in each cell.
-
-| Row | State | Frames | FPS | Loop |
-|---|---|---|---|---|
-| 0 | idle | 8 | 8 | yes |
-| 1 | walk | 8 | 12 | yes |
-| 2 | run | 8 | 16 | yes |
-| 3 | attack | 8 | 14 | no |
-| 4 | cast | 8 | 12 | no |
-
-Each hero directory includes the engine manifest, individual transparent PNG
-frames, and dark-background GIF previews. `assets/contact-sheet.png` shows all
-120 frames. The manifest stores QA bounds and unique-frame counts per state.
-
-## Rebuild
-
-Requires Python 3 and Pillow:
+Таррок (`baldin`), Элира (`mithrandir`) и Шелт (`peregrin`) используют общий
+суставной скелет из `body.py`, `rig.py` и `new_heroes.py`. Их исходные атласы
+состоят из восьми кадров на каждый из пяти рядов: idle, walk, run, attack,
+cast. Для их пересборки нужны Python 3 и Pillow:
 
 ```sh
 python tools/hero-rigs/build_originals.py
 ```
 
-The builder asserts 8 distinct frames per state and transparent safety margins
-around every frame. Its output is deterministic. `rig.py`, `body.py`, and
-`tracks.py` reuse the project's existing source primitives; `new_heroes.py`
-contains the new character geometry and motion tracks.
+Ваудин (`knight`) и Илвен (`archer`) используют тот же набор исходных
+примитивов, а оригинальные четыре ряда сохраняются побитно. Дополнительные
+восемь поз каста создаются из их исходных rig-файлов:
+
+```sh
+python tools/hero-rigs/extend_cast.py
+```
+
+Команды обновляют атласы в `assets/hero-rigs/` и их манифесты. Внутренние ID
+соответствуют старым сохранениям; имена в интерфейсе новые.
+
+Knight: the shield rises as a circular blue ward gathers. Archer: the bow lowers
+and green light gathers above the raised palm. Both have eight individually
+posed frames and baked light that follows the changing grip.

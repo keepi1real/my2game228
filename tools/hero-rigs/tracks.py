@@ -89,6 +89,26 @@ def knight_attack(n=N):
     return out
 
 
+def knight_cast(n=N):
+    """Plant the sword, raise the shield, gather a ward, then release it."""
+    keys = [
+        (20, 64, 22, 26, 81, -6, 0.10),
+        (13, 68, 10, 21, 93, -9, 0.22),
+        (8, 78, -8, 15, 102, -11, 0.46),
+        (7, 88, -20, 12, 108, -13, 0.72),
+        (9, 94, -24, 12, 108, -13, 1.00),
+        (16, 86, -5, 17, 103, -9, 0.88),
+        (20, 72, 13, 22, 94, -5, 0.49),
+        (21, 66, 26, 25, 84, -3, 0.18),
+    ]
+    return [dict(grip_x=gx, grip_y=gy, sword_ang=sa,
+                 shield_x=sx, shield_y=sy, shield_ang=-18-36*energy,
+                 lean=lean, head=2+energy*7, hip_y=64+energy,
+                 thigh_n=12, shin_n=9, thigh_f=-16, shin_f=-14,
+                 cape_sway=-5*energy, cast_energy=energy)
+            for gx, gy, sa, sx, sy, lean, energy in keys[:n]]
+
+
 # --------------------------------------------------------------------- archer
 def archer_idle(n=N):
     out = []
@@ -158,9 +178,29 @@ def archer_shoot(n=N):
     return out
 
 
+def archer_cast(n=N):
+    """Lower the bow and draw a circle of woodland light above the free hand."""
+    keys = [
+        (26, 79, 25, 12, 80, -4, .10),
+        (21, 75, 33, 12, 90, -7, .26),
+        (17, 73, 38, 13, 101, -10, .48),
+        (16, 72, 40, 15, 112, -11, .75),
+        (16, 72, 40, 19, 115, -12, 1.0),
+        (21, 75, 31, 24, 105, -7, .81),
+        (26, 79, 24, 24, 91, -4, .43),
+        (31, 86, 10, 17, 85, -3, .16),
+    ]
+    return [dict(bow_x=bx, bow_y=by, bow_ang=ba,
+                 draw_x=dx, draw_y=dy, arrow=0.0,
+                 lean=lean, head=2+energy*5, hip_y=64,
+                 thigh_n=12, shin_n=8, thigh_f=-15, shin_f=-13,
+                 cape_sway=-3*energy, cast_energy=energy)
+            for bx, by, ba, dx, dy, lean, energy in keys[:n]]
+
+
 HEROES = {
     "knight": {"idle": knight_idle, "walk": knight_walk,
-               "run": knight_run, "attack": knight_attack},
+               "run": knight_run, "attack": knight_attack, "cast": knight_cast},
     "archer": {"idle": archer_idle, "walk": archer_walk,
-               "run": archer_run, "shoot": archer_shoot},
+               "run": archer_run, "shoot": archer_shoot, "cast": archer_cast},
 }
