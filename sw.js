@@ -6,7 +6,7 @@
 // Поднимите CACHE после правок в js/, css/ или assets/, иначе у уже установивших
 // игру останется старая версия: старые кэши удаляются в activate по имени.
 
-const CACHE = 'undermountain-expedition-v11-r3';
+const CACHE = 'undermountain-expedition-v11-r6';
 
 // Оболочка и все обязательные изображения входят в начальный кэш,
 // чтобы после первого запуска каждый из восьми этажей был доступен без сети.
@@ -45,6 +45,19 @@ const SHELL = [
   './js/seamless-floor-render.js',
   './js/bestiary-v6.js',
   './js/actor-animation-v4.js',
+  './assets/hero-rigs/knight/sprite-sheet-alpha.png',
+  './assets/hero-rigs/knight/manifest.json',
+  './assets/hero-rigs/archer/sprite-sheet-alpha.png',
+  './assets/hero-rigs/archer/manifest.json',
+  './assets/hero-rigs/baldin/sprite-sheet-alpha.png',
+  './assets/hero-rigs/baldin/manifest.json',
+  './assets/hero-rigs/mithrandir/sprite-sheet-alpha.png',
+  './assets/hero-rigs/mithrandir/manifest.json',
+  './assets/hero-rigs/peregrin/sprite-sheet-alpha.png',
+  './assets/hero-rigs/peregrin/manifest.json',
+  './js/rigged-enemy-overlay.js',
+  './assets/karg-ironfang/sprite-sheet-alpha.png',
+  './assets/karg-ironfang/manifest.json',
   './js/bestiary-combat-v6.js',
   './js/storm-v7.js',
   './js/front-menu-v4.js',

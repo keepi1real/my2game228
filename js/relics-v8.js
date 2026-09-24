@@ -30,10 +30,17 @@ const RunRelics=(()=>{
     if(!q)throw Error('No reachable relic socket in room '+r.id);return q;
   }
   function prepareRooms(g){
+    // Keep existing saved rewards intact. New runs use a seeded roll so a
+    // resumed floor cannot reroll rooms by reopening the game. After three
+    // misses the next combat room is guaranteed to carry a relic.
+    let misses=0;
     for(const r of g.journey.rooms)if(['combat','elite'].includes(r.role)){
       // v3/v4 saves without rewards keep cleared rooms spent. Uncleared rooms
       // participate immediately, without retroactive grants or a run reset.
-      if(!r.reward&&!r.cleared)r.reward={status:'sealed'};
+      const rng=new RNG((g.journey.seed^((r.id+1)*93871)^(g.floor*51893))>>>0);
+      const eligible=misses>=3||rng.next()<(r.role==='elite'?.62:.32);
+      misses=eligible?0:misses+1;
+      if(!r.reward&&!r.cleared&&eligible)r.reward={status:'sealed'};
       if(r.reward)r.rewardPoint=point(g,r);
     }
   }
@@ -127,4 +134,3 @@ Game.prototype.update=function(dt){
   this.input.endFrame();
 };
 Game.prototype.resetRunState=function(){RelicUI.closeCanvas(this);relicReset.call(this);this.pendingRelic=null;};
-

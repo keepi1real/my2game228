@@ -3,9 +3,48 @@
 // rendering never consumes the gameplay RNG or changes a collider/attack timer.
 const ActorMotion = (() => {
   const TAU=Math.PI*2, states=new WeakMap();
+  // Every atlas has 8 columns of 192px cells. Keep the old sprites as
+  // loading/error fallbacks; new sheets add a fifth row for spell casts.
+  const heroSheets={
+    arator:{file:'knight',height:56,footX:111,footY:174,figureH:156,rows:4},
+    faelas:{file:'archer',height:58,footX:111,footY:174,figureH:156,rows:4},
+    baldin:{file:'baldin',height:46,footX:88,footY:178,figureH:136,rows:5},
+    mithrandir:{file:'mithrandir',height:56,footX:88,footY:178,figureH:160,rows:5},
+    peregrin:{file:'peregrin',height:42,footX:88,footY:178,figureH:119,rows:5},
+  };
+  for(const sheet of Object.values(heroSheets)){
+    sheet.image=new Image();
+    sheet.image.src=`assets/hero-rigs/${sheet.file}/sprite-sheet-alpha.png`;
+  }
+  function sheetFrame(id,s,e){
+    const sheet=heroSheets[id];
+    if(s.left>0){
+      const meleeSkill=['dashStrike','whirlwind','axeThrow','stone'].includes(s.action);
+      const basic=s.action==='attack'||meleeSkill||['volley','trueshot'].includes(s.action);
+      if(basic||sheet.rows===5){
+        const row=basic?3:4;
+        return {row,frame:Math.min(7,Math.floor((1-s.left/s.total)*8))};
+      }
+    }
+    const running=!!e.dash||s.running;
+    const moving=(s.walk||0)>.2;
+    const mode=moving?(running?'run':'walk'):'idle';
+    const fps=mode==='run'?16:mode==='walk'?12:8;
+    return {row:mode==='idle'?0:mode==='walk'?1:2,frame:Math.floor((s.age||0)*fps)%8};
+  }
+  function atlas(c,id,e,s,h){
+    const sheet=heroSheets[id],img=sheet?.image;
+    if(!ready(img))return false;
+    const {row,frame}=sheetFrame(id,s,e),k=h/sheet.figureH;
+    c.save();c.imageSmoothingEnabled=false;
+    c.translate(e.x,e.y);c.scale((s.facing||1)*k,k);
+    c.drawImage(img,frame*192,row*192,192,192,-sheet.footX,-sheet.footY,192,192);
+    if(s.hit>0){c.globalAlpha=Math.min(.65,s.hit/.12);c.filter='brightness(0) invert(1)';c.drawImage(img,frame*192,row*192,192,192,-sheet.footX,-sheet.footY,192,192);}
+    c.restore();return true;
+  }
   const aliases={orc:['enemies','goblin',54],archer:['enemies','goblin',50],uruk:['enemies','troll',76],wraith:['heroes','mithrandir',62],shadow:['heroes','mithrandir',53],grazgot:['enemies','troll',114],morgul:['heroes','mithrandir',108]};
   function state(e){let s=states.get(e);if(!s){s={x:e.x,y:e.y,phase:0,walk:0,facing:1,age:0,action:'idle',left:0,total:1,angle:0,hit:0,step:0};states.set(e,s);}return s;}
-  function asset(group,id){if(BestiaryArt.specs[id])return {group,id,height:BestiaryArt.specs[id].height};const a=aliases[id];return a?{group:a[0],id:a[1],height:a[2]}:{group,id,height:spriteDef(group,id)?.height};}
+  function asset(group,id){if(group==='heroes'&&heroSheets[id])return {group,id,height:heroSheets[id].height};if(BestiaryArt.specs[id])return {group,id,height:BestiaryArt.specs[id].height};const a=aliases[id];return a?{group:a[0],id:a[1],height:a[2]}:{group,id,height:spriteDef(group,id)?.height};}
   function event(e,action,time,angle=0){const s=state(e);Object.assign(s,{action,left:time,total:time,angle});}
   function add(g,fx){if(!g.motionFX)g.motionFX=[];if(g.motionFX.length>=96)g.motionFX.shift();g.motionFX.push({...fx,total:fx.life});}
   function update(g,dt){
@@ -14,6 +53,7 @@ const ActorMotion = (() => {
       const s=state(e),d=Math.hypot(e.x-s.x,e.y-s.y),moving=d>.05&&d<70&&!e.stun&&!e.stunTime;
       s.age+=dt;s.left=Math.max(0,s.left-dt);s.hit=Math.max(0,s.hit-dt);
       s.walk+=(Number(moving)-s.walk)*(1-Math.exp(-18*dt));
+      s.running=!!e.dash||(moving&&d/Math.max(dt,.001)>(e.hero?.speed||e.speed||180)*1.25);
       if(moving)s.phase+=d*(e.type==='spider'?.22:e.type==='warg'?.12:.15);
       const direction=e.aim?.x ?? (e.x-s.x);if(Math.abs(direction)>.01)s.facing=direction<0?-1:1;
       if(e.state==='windup'&&Math.abs(e.windupDir?.x||0)>.01)s.facing=e.windupDir.x<0?-1:1;
@@ -101,6 +141,10 @@ const ActorMotion = (() => {
     }
   }
   function draw(c,group,id,e,options={}){
+    if(group==='heroes'&&heroSheets[id]){
+      const s=options.state||state(e),h=options.height||heroSheets[id].height;
+      if(atlas(c,id,e,s,h))return true;
+    }
     const a=asset(group,id),custom=BestiaryArt.specs[id],img=custom?BestiaryArt.sprite(id):artImage('sprite',a.group,a.id),def=custom||spriteDef(a.group,a.id);if(!img||(!custom&&!ready(img))||!def)return false;
     const s=options.state||state(e),h=options.height||a.height,scale=h/256;
     const wind=e.state==='windup'?clamp(1-e.windup/(e.def.windup||.4),0,1):e.telegraph?clamp(1-e.telegraph.time/e.telegraph.total,0,1):0;
@@ -137,7 +181,10 @@ const ActorMotion = (() => {
     }
   }
   function corpse(c,f){const t=1-f.life/f.total;c.save();c.translate(f.x,f.y);c.globalAlpha*=Math.pow(1-t,.7)*.8;c.rotate(f.facing*Math.min(1,t*3)*1.45);c.scale(1,1-Math.min(.65,t));draw(c,f.group,f.id,{x:0,y:0},{state:{phase:0,walk:0,age:0,facing:f.facing,left:0,total:1,hit:0},noWeapon:true});c.restore();}
-  return {state,asset,event,add,update,draw,effects,corpse,glow,rune};
+  return {state,asset,event,add,update,draw,effects,corpse,glow,rune,
+    sheetImage:id=>ready(heroSheets[id]?.image)?heroSheets[id].image:null,
+    sheetLayout:id=>heroSheets[id]||null,
+    hasAtlas:id=>ready(heroSheets[id]?.image)};
 })();
 
 const motionBaseReset=Game.prototype.resetRunState;
@@ -150,7 +197,7 @@ Game.prototype.update=function(dt){
   if(playing&&this.player===player&&this.state==='run')ActorMotion.update(this,dt);
 };
 const motionBaseAttack=Game.prototype.playerAttack;
-Game.prototype.playerAttack=function(){ActorMotion.event(this.player,'attack',.25,Math.atan2(this.player.aim.y,this.player.aim.x));return motionBaseAttack.call(this);};
+Game.prototype.playerAttack=function(){ActorMotion.event(this.player,'attack',ActorMotion.sheetLayout(this.hero.id)?8/14:.25,Math.atan2(this.player.aim.y,this.player.aim.x));return motionBaseAttack.call(this);};
 const motionBaseEnemyAttack=Game.prototype.enemyAttack;
 Game.prototype.enemyAttack=function(e){
   const a=angleTo(e.x,e.y,this.player.x,this.player.y);ActorMotion.event(e,e.def.ranged?'cast':'attack',.32,a);
@@ -160,7 +207,7 @@ Game.prototype.enemyAttack=function(e){
 const motionBaseSkill=Game.prototype.useSkill;
 Game.prototype.useSkill=function(i){
   if(!this.player||!Number.isInteger(i)||i<0||i>2||this.player.skillCds[i]>0)return;
-  const p=this.player,id=this.hero.skills[i];ActorMotion.event(p,id,.5,Math.atan2(p.aim.y,p.aim.x));
+  const p=this.player,id=this.hero.skills[i];ActorMotion.event(p,id,ActorMotion.sheetLayout(this.hero.id)?.rows===5?8/12:.5,Math.atan2(p.aim.y,p.aim.x));
   ActorMotion.add(this,{kind:id==='whirlwind'?'spin':'cast',x:p.x,y:p.y,r:id==='whirlwind'?80:36,color:['herbs','breakfast'].includes(id)?'#a6ecb5':id==='fireball'?'#ff9764':this.hero.color,life:id==='whirlwind'?.5:.6});
   return motionBaseSkill.call(this,i);
 };
@@ -182,6 +229,8 @@ Game.prototype.resolveTelegraph=function(e){const t=e.telegraph;if(t){ActorMotio
 
 const motionBaseArt=Renderer.prototype.drawArt;
 Renderer.prototype.drawArt=function(group,id,e,r,color){return ActorMotion.draw(this.ctx,group,id,e)||motionBaseArt.call(this,group,id,e,r,color);};
+const motionBaseSwingBlade=Renderer.prototype.drawSwingBlade;
+Renderer.prototype.drawSwingBlade=function(p,s){if(ActorMotion.hasAtlas(this.g.hero.id))return;return motionBaseSwingBlade.call(this,p,s);};
 const motionBaseTop=Renderer.prototype.bodyTop,motionBaseWidth=Renderer.prototype.spriteWidth;
 Renderer.prototype.bodyTop=function(group,id,e,r){const a=ActorMotion.asset(group,id);return a.height?e.y-a.height:motionBaseTop.call(this,group,id,e,r);};
 Renderer.prototype.spriteWidth=function(group,id){return ActorMotion.asset(group,id).height||motionBaseWidth.call(this,group,id);};
@@ -213,4 +262,3 @@ Renderer.prototype.render=function(){
   motionBaseRender.call(this);const g=this.g;if(!g.journey?.seamless||!g.player||g.input.touchMode||g.state==='route-map')return;
   const c=this.ctx,p=g.player;for(let i=0;i<3;i++){const x=260+i*160,y=548,sk=SKILLS[g.hero.skills[i]],cd=p.skillCds[i];RoutePaint.plate(c,x,y,148,47);RoutePaint.text(c,String(i+1),x+14,y+15,cd?'#8b929a':'#ffdfa0',14);RoutePaint.text(c,sk.name,x+79,y+17,cd?'#a3a7ac':'#ebe0bf',11);RoutePaint.text(c,cd?cd.toFixed(1)+' с':'ГОТОВО',x+79,y+35,cd?'#a8abc1':'#95d8c5',9);}
 };
-
