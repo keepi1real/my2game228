@@ -25,7 +25,7 @@ const server = http.createServer((req,res) => {
     const errors=[];
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='error' && /Ошибка в кадре игры|Игровой цикл остановлен|TypeError|ReferenceError/.test(message.text()))errors.push(message.text());});
-    await page.goto('http://127.0.0.1:'+server.address().port+'/adventure-v20/',{waitUntil:'domcontentloaded'});
+    await page.goto('http://127.0.0.1:'+server.address().port+'/adventure-v20/index.html',{waitUntil:'domcontentloaded'});
     await page.waitForFunction(() => document.title === 'Осколки Рассвета' && window.V20Build?.installed?.length === 4 && document.querySelectorAll('[aria-label*="—"]').length >= 5, null, {timeout:90000});
     await page.getByRole('button',{name:'Начать поход'}).click();
     await page.waitForFunction(() => window.game?.state === 'run' && window.game?.journey?.v20MapVersion === 20, null, {timeout:30000});
