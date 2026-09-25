@@ -76,7 +76,7 @@
       c.save();c.beginPath();
       for(const poly of room.polygons){poly.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();}
       c.clip();
-      if(ready(raster.ceramicFloor)) {
+      if(room.biome==='glass' && ready(raster.ceramicFloor)) {
         let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
         for(const poly of room.polygons)for(const [x,y] of poly){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
         if(x1>=view.x && y1>=view.y && x0<=view.x+view.w && y0<=view.y+view.h){

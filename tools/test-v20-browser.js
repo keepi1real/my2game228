@@ -4,6 +4,7 @@ const http = require('http');
 const path = require('path');
 const {chromium} = require('playwright');
 const dir = path.resolve('www');
+const patchIds = JSON.parse(fs.readFileSync(path.resolve('tools/v20-manifest.json'), 'utf8')).patches.map(patch => patch.id);
 const allowed = new Set([
   'adventure-v20/index.html',
   'adventure-v20/adventure-v20-play.html.gz',
@@ -26,7 +27,9 @@ const server = http.createServer((req,res) => {
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='error' && /Ошибка в кадре игры|Игровой цикл остановлен|TypeError|ReferenceError/.test(message.text()))errors.push(message.text());});
     await page.goto('http://127.0.0.1:'+server.address().port+'/adventure-v20/index.html',{waitUntil:'domcontentloaded'});
-    await page.waitForFunction(() => document.title === 'Осколки Рассвета' && window.V20Build?.installed?.length === 5 && document.querySelectorAll('[aria-label*="—"]').length >= 5, null, {timeout:90000});
+    await page.waitForFunction(expected => document.title === 'Осколки Рассвета' &&
+      JSON.stringify(window.V20Build?.installed) === JSON.stringify(expected) &&
+      document.querySelectorAll('[aria-label*="—"]').length >= 5, patchIds, {timeout:90000});
     if (!await page.evaluate(() => window.V20Storage?.key === 'undermountain-biomes-v20-preview'))
       throw Error('V20 checkpoint is not isolated from the stable game');
     await page.getByRole('button',{name:'Начать поход'}).click();
