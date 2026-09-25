@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "baseSha256": "62d8a85503ed1db2293792fc72e993cd77117199d6d125bcd3926bf687649a19",
+  "patches": [
+    { "id": "enemies", "file": "v20-enemies.js" },
+    { "id": "maps", "file": "v20-maps.js", "after": ["enemies"] },
+    { "id": "design", "file": "v20-design.js", "after": ["maps"] },
+    { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] }
+  ]
+}

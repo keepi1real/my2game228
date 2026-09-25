@@ -24,7 +24,7 @@ const out = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(root
 // Service worker в APK не кладём: внутри WebView всё и так локальное, а лишний
 // слой кэша только помешает обновлению игры вместе с приложением.
 const FILES = ['index.html', 'adventure-v19-play.html.gz', 'archive.html', 'manifest.webmanifest'].concat(pwa ? ['sw.js', '.nojekyll'] : []);
-const DIRS = ['css', 'js', 'assets', 'lens-trial'];
+const DIRS = ['css', 'js', 'assets', 'lens-trial', 'adventure-v20'];
 
 function copyDir(from, to) {
   fs.mkdirSync(to, { recursive: true });
