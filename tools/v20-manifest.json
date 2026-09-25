@@ -6,6 +6,8 @@
     { "id": "enemies", "file": "v20-enemies.js", "after": ["storage"] },
     { "id": "maps", "file": "v20-maps.js", "after": ["enemies"] },
     { "id": "design", "file": "v20-design.js", "after": ["maps"] },
-    { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] }
+    { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
+    { "id": "map-placement", "file": "v20-map-placement.js", "after": ["maps"] },
+    { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] }
   ]
 }
