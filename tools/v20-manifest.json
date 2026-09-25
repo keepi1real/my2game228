@@ -5,9 +5,11 @@
     { "id": "storage", "file": "v20-storage.js" },
     { "id": "enemies", "file": "v20-enemies.js", "after": ["storage"] },
     { "id": "maps", "file": "v20-maps.js", "after": ["enemies"] },
-    { "id": "design", "file": "v20-design.js", "after": ["maps"] },
+    { "id": "asset-loading", "file": "v20-asset-loading.js", "after": ["maps"] },
+    { "id": "design", "file": "v20-design.js", "after": ["asset-loading"] },
     { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
     { "id": "map-placement", "file": "v20-map-placement.js", "after": ["maps"] },
-    { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] }
+    { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] },
+    { "id": "readability", "file": "v20-readability.js", "after": ["map-art", "heroes"] }
   ]
 }
