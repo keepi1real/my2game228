@@ -26,7 +26,9 @@ const server = http.createServer((req,res) => {
     page.on('pageerror',error=>errors.push(error.message));
     page.on('console',message=>{if(message.type()==='error' && /Ошибка в кадре игры|Игровой цикл остановлен|TypeError|ReferenceError/.test(message.text()))errors.push(message.text());});
     await page.goto('http://127.0.0.1:'+server.address().port+'/adventure-v20/index.html',{waitUntil:'domcontentloaded'});
-    await page.waitForFunction(() => document.title === 'Осколки Рассвета' && window.V20Build?.installed?.length === 4 && document.querySelectorAll('[aria-label*="—"]').length >= 5, null, {timeout:90000});
+    await page.waitForFunction(() => document.title === 'Осколки Рассвета' && window.V20Build?.installed?.length === 5 && document.querySelectorAll('[aria-label*="—"]').length >= 5, null, {timeout:90000});
+    if (!await page.evaluate(() => window.V20Storage?.key === 'undermountain-biomes-v20-preview'))
+      throw Error('V20 checkpoint is not isolated from the stable game');
     await page.getByRole('button',{name:'Начать поход'}).click();
     await page.waitForFunction(() => window.game?.state === 'run' && window.game?.journey?.v20MapVersion === 20, null, {timeout:30000});
     await page.waitForTimeout(1200);

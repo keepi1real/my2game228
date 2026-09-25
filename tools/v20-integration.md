@@ -24,7 +24,8 @@ HTML-терминаторы script в патчах и запись поверх 
 {
   "version": 1,
   "patches": [
-    {"id": "enemies", "file": "v20-enemies.js"},
+    {"id": "storage", "file": "v20-storage.js"},
+    {"id": "enemies", "file": "v20-enemies.js", "after": ["storage"]},
     {"id": "maps", "file": "v20-maps.js", "after": ["enemies"]},
     {"id": "design", "file": "v20-design.js", "after": ["maps"]},
     {"id": "heroes", "file": "v20-heroes.js", "after": ["design"]}
@@ -72,7 +73,17 @@ URL должен разрешаться относительно докумен�
 ## Совместимость сохранений
 
 Не менять ключи `shadows-undermountain-save-v1`,
-`shadows-undermountain-audio-v1`, `RoomRoute.key`, `SeamlessFloor.key`.
+`shadows-undermountain-audio-v1`, `RoomRoute.key`.
+Первый патч `v20-storage.js` переключает изменяемое свойство `SeamlessFloor.key`
+с `undermountain-biomes-v3` на `undermountain-biomes-v20-preview` до создания
+Game. Все checkpoint save/resume/menu/pagehide операции v19 читают свойство
+динамически, поэтому перехватывать весь Storage.prototype не требуется.
+При отсутствии preview-ключа патч один раз копирует старый checkpoint без изменения
+исходного значения; штатная загрузка затем проверяет его. Существующее значение,
+включая JSON `null` после смерти/завершения, не заменяется старым забегом.
+Если чтение или запись запрещены, ключ остаётся изолированным; записи в v19
+никогда не используются как fallback. Meta Save остаётся общим по требованию.
+Проверка: `node tools/test-v20-storage.js`.
 `Game.prototype.saveJourney` имеет явный список сохраняемых полей: добавленное
 поле экземпляра не сохраняется автоматически.
 
@@ -121,7 +132,7 @@ checkpoint также исключает обещание обратной за�
 
 ## Выполненная интеграционная проверка
 
-2026-09-25: Node VM + настоящий Canvas (`@napi-rs/canvas`), все четыре патча:
+2026-09-25: Node VM + настоящий Canvas (`@napi-rs/canvas`), все игровые патчи:
 10 глав из `WorldTour.order` — start, update, render, save/resume и точное
 совпадение геометрии до/после; все 5 героев — базовая атака, 3 умения, 60 update
 и render; настоящий checkpoint создан на исходной v19, восстановлен на v20
