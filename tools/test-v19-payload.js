@@ -1,0 +1,18 @@
+'use strict';
+const fs = require('fs');
+const zlib = require('zlib');
+const crypto = require('crypto');
+const vm = require('vm');
+const assert = require('assert/strict');
+const payload = fs.readFileSync('adventure-v19-play.html.gz');
+const html = zlib.gunzipSync(payload).toString('utf8');
+const digest = crypto.createHash('sha256').update(html).digest('hex');
+assert.equal(digest, '62d8a85503ed1db2293792fc72e993cd77117199d6d125bcd3926bf687649a19');
+assert.match(html, /<title>Осколки Рассвета<\/title>/);
+assert.match(html, /<canvas id="game"/);
+assert.match(html, /function startGame\(/);
+const script = html.match(/<script>([\s\S]*?)<\/script>/);
+assert.ok(script, 'game script is present');
+new vm.Script(script[1]);
+assert.ok(payload.byteLength < 25_000_000, 'GitHub browser upload 25 MB limit');
+console.log('Source verified:', digest, 'compressed bytes:', payload.byteLength);
