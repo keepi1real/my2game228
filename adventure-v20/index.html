@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Осколки Рассвета · новая экспедиция — загрузка</title>
+  <style>
+    html,body{margin:0;min-height:100%;background:#0b0b10;color:#e6e2d3;font:16px/1.5 system-ui,sans-serif}
+    main{max-width:34rem;margin:20vh auto;padding:2rem;text-align:center}
+  </style>
+</head>
+<body>
+  <main id="status" role="status">Загружаем игру «Осколки Рассвета»…</main>
+  <script>
+    (async () => {
+      try {
+        // The source HTML contains its artwork and scripts. Keep it losslessly
+        // compressed: GitHub's browser uploader limits individual files to 25 MB.
+        const response = await fetch('adventure-v20-play.html.gz', {cache: 'no-cache'});
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const bytes = await response.arrayBuffer();
+        const zipped = new Uint8Array(bytes);
+        const source = zipped[0] === 0x1f && zipped[1] === 0x8b
+          ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+          : new TextDecoder().decode(bytes);
+        if (!source.includes('<title>Осколки Рассвета</title>') || !source.includes('startGame()'))
+          throw new Error('Файл игры повреждён');
+        document.open();
+        document.write(source);
+        document.close();
+      } catch (error) {
+        document.getElementById('status').innerHTML =
+          '<h1>Игра не загрузилась</h1><p>Проверьте соединение и обновите страницу.</p>';
+        console.error('Осколки Рассвета:', error);
+      }
+    })();
+  </script>
+</body>
+</html>
