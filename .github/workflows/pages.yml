@@ -48,18 +48,12 @@ jobs:
         run: |
           npm i --no-save playwright @napi-rs/canvas@0.1.100
           npx playwright install --with-deps chromium
-      - name: Таланты, артефакты и сохранения
-        run: node tools/test-progression-v11.js
-      - name: Полный поход, новые биомы и противники
-        run: node tools/test-crown-v11.js
-      - name: Бой и управление в браузере
-        run: |
-          node tests/combat.js
-          node tests/browser.js
-      - name: Проверить данные и генерацию
-        run: node tests/run.js
+      - name: Проверить загруженную игру
+        run: node tools/test-v19-payload.js
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
+      - name: Проверить запуск в браузере
+        run: node tools/test-v19-browser.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
