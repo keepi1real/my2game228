@@ -50,6 +50,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Проверить загруженную игру
         run: node tools/test-v19-payload.js
+      - name: Проверить раздельные сохранения
+        run: node tools/test-v20-storage.js
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере
