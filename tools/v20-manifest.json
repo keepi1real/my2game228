@@ -8,12 +8,16 @@
     { "id": "asset-loading", "file": "v20-asset-loading.js", "after": ["maps"] },
     { "id": "design", "file": "v20-design.js", "after": ["asset-loading"] },
     { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
+    { "id": "hero-progression", "file": "v20-hero-progression.js", "after": ["heroes"] },
+    { "id": "hero-mastery-ui", "file": "v20-hero-mastery-ui.js", "after": ["hero-progression"] },
     { "id": "map-placement", "file": "v20-map-placement.js", "after": ["maps"] },
     { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] },
-    { "id": "room-rhythm", "file": "v20-room-rhythm.js", "after": ["map-art"] },
+    { "id": "matte-floor", "file": "v20-matte-floor.js", "after": ["map-art"] },
+    { "id": "room-rhythm", "file": "v20-room-rhythm.js", "after": ["matte-floor"] },
     { "id": "readability", "file": "v20-readability.js", "after": ["map-art", "heroes"] },
     { "id": "interactables", "file": "v20-interactables.js", "after": ["readability"] },
     { "id": "combat-visibility", "file": "v20-combat-visibility.js", "after": ["interactables"] },
-    { "id": "save-atomic", "file": "v20-save-atomic.js", "after": ["maps"] }
+    { "id": "save-atomic", "file": "v20-save-atomic.js", "after": ["maps"] },
+    { "id": "wave-recovery", "file": "v20-wave-recovery.js", "after": ["save-atomic", "enemies"] }
   ]
 }

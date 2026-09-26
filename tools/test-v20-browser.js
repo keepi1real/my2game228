@@ -32,6 +32,9 @@ const server = http.createServer((req,res) => {
       document.querySelectorAll('[aria-label*="—"]').length >= 5, patchIds, {timeout:90000});
     if (!await page.evaluate(() => window.V20Storage?.key === 'undermountain-biomes-v20-preview'))
       throw Error('V20 checkpoint is not isolated from the stable game');
+    const masteryLabels = await page.locator('[data-front^="hero-"]').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')));
+    if (masteryLabels.length !== 5 || masteryLabels.some(label => !label?.includes('Мастерство 10')))
+      throw Error('The five hero mastery bonuses are missing from the front menu');
     await page.getByRole('button',{name:'Начать поход'}).click();
     await page.waitForFunction(() => window.game?.state === 'run' && window.game?.journey?.v20MapVersion === 20, null, {timeout:30000});
     await page.waitForTimeout(1200);
