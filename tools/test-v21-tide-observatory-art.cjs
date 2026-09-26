@@ -11,6 +11,7 @@ const initial=JSON.stringify({g,room,o});
 for(const role of Object.keys(env.window.V21TideObservatoryArt.roles)){
   assert.equal(env.BiomeArtV3.ground(context,g,[{...room,role}],[],view),'ground');
   assert.equal(env.window.V21TideObservatoryArt.metrics.rooms,1);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.roleMarks,1);
   env.BiomeArtV3.prop(context,o,{x:230,y:140},0);
   assert.equal(env.window.V21TideObservatoryArt.metrics.props,1);
   assert.equal(env.window.V21TideObservatoryArt.metrics.faded,1);
@@ -30,6 +31,20 @@ for(const sprite of ['tidepillar','tidebasin','tidescholar','tideshelves']){
   env.BiomeArtV3.prop(context,{...landmark,sprite:'landmark-v15-tideobservatory'},null,0);
   assert.equal(env.window.V21TideObservatoryArt.metrics.props,1);assert.equal(oldProp,0);assert.equal(depth,0);
 }
+// Several existing decorations may carry landmark=true. Only the principal
+// fixture gets the tall role-specific silhouette; all others stay low.
+for(const role of Object.keys(env.window.V21TideObservatoryArt.roles)){
+  const first={...o,sprite:'landmark-v15-tideobservatory',homeRoom:3};
+  const second={...first,x:first.x+90};
+  const r={...room,id:3,role,design:{landmark:'tidepillar'},decor:[first,second]};
+  const state={journey:{v21MapVersion:21,rooms:[r]}},unchanged=JSON.stringify(state);
+  env.BiomeArtV3.ground(context,state,[r],[],view);
+  env.BiomeArtV3.prop(context,first,null,0);env.BiomeArtV3.prop(context,second,null,0);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.landmarks,1,role);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.props,2,role);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.roleMarks,1,role);
+  assert.equal(JSON.stringify(state),unchanged);assert.equal(depth,0);
+}
 const before=calls;
 env.BiomeArtV3.ground(context,g,[{...room,biome:'tide'}],[],view);assert.equal(calls,before);
 env.BiomeArtV3.ground(context,g,[room],[],{x:5000,y:5000,w:100,h:100});assert.equal(calls,before);
@@ -37,4 +52,4 @@ env.BiomeArtV3.ground(context,{journey:{v20MapVersion:20}},[room],[],view);asser
 assert.equal(env.BiomeArtV3.prop(context,o,null,0),'prop');assert.equal(oldProp,1);
 const installed=env.BiomeArtV3.ground;vm.runInContext(source,env);assert.equal(installed,env.BiomeArtV3.ground);
 assert(oldGround>=10);assert.equal(depth,0);
-console.log('PASS: 7 room roles; 4 native/aliased landmark families; finite coordinates; v21/biome/viewport gates; prop fade; no RNG or state mutation; balanced canvas stack; idempotent install.');
+console.log('PASS: 7 role-specific landmarks/inlays; only one tall landmark per room; 4 native/aliased families; finite coordinates; v21/biome/viewport gates; prop fade; no RNG/state mutation; balanced canvas stack; idempotent install.');

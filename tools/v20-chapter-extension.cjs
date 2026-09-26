@@ -28,6 +28,7 @@ function extendChapter(html, level) {
   replace('motif:(r.id*5+signatures[j.levelId])%6', "motif:(r.id*5+(j.levelId==='tideobservatory'?10:signatures[j.levelId]))%6");
   replace('l.half=widths[j.levelId]+l.id%2*10;', "l.half=(j.levelId==='tideobservatory'?116:widths[j.levelId])+l.id%2*10;");
   replace('const m=profile(j),roster=rosters[j.levelId],rank=', "const m=profile(j),roster=j.levelId==='tideobservatory'?ExpeditionLevels.get(j.levelId).encounters:rosters[j.levelId],rank=");
+  replace('rosters[g.journey.levelId][s.bossPhases]', "(g.journey.levelId==='tideobservatory'?ExpeditionLevels.get(g.journey.levelId).encounters:rosters[g.journey.levelId])[s.bossPhases]");
   return html;
 }
 module.exports = {extendChapter, BASE_SHA256, ID};
