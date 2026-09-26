@@ -18,6 +18,28 @@ for(const role of Object.keys(env.window.V21TideObservatoryArt.roles)){
   assert.equal(context.globalAlpha,1);assert.equal(depth,0);
 }
 assert.equal(initial,JSON.stringify({g,room,o}));assert.equal(oldProp,0);
+// Compare the large filled service-panel silhouettes, excluding role glyphs.
+// Identity must survive zoom-out, while the middle half stays free for combat.
+let path=[],panels=[];
+context.beginPath=()=>{path=[];};
+context.moveTo=context.lineTo=(x,y)=>{assert(Number.isFinite(x)&&Number.isFinite(y));path.push([x,y]);};
+context.fill=()=>{if(path.length===6)panels.push(path.slice());};
+const panelSignatures=new Set(),panelCounts=new Set();
+for(const role of Object.keys(env.window.V21TideObservatoryArt.roles)){
+  panels=[];
+  env.BiomeArtV3.ground(context,g,[{...room,role}],[],view);
+  assert(panels.length>=2&&panels.length<=8,`${role}: bounded service-panel density`);
+  for(const panel of panels)for(const [x,y] of panel){
+    assert(Math.abs(x-room.center.x)>=150,`${role}: panel intrudes into central fight lane`);
+    assert(y>=0&&y<=400,`${role}: panel exceeds room bounds`);
+  }
+  panelSignatures.add(JSON.stringify(panels));panelCounts.add(panels.length);
+  const signature=JSON.stringify(panels);panels=[];
+  env.BiomeArtV3.ground(context,g,[{...room,role}],[],view);
+  assert.equal(JSON.stringify(panels),signature,`${role}: deterministic drawing`);
+}
+assert.equal(panelSignatures.size,7,'all seven roles need different large floor silhouettes');
+assert.equal(panelCounts.size,4,'room rhythm spans one to four panels on each flank');
 // Native landmarks and RoomCraft's alias must use the new renderer even when
 // the adapter does not provide the generic biome-prop kind.
 for(const sprite of ['tidepillar','tidebasin','tidescholar','tideshelves']){
@@ -52,4 +74,4 @@ env.BiomeArtV3.ground(context,{journey:{v20MapVersion:20}},[room],[],view);asser
 assert.equal(env.BiomeArtV3.prop(context,o,null,0),'prop');assert.equal(oldProp,1);
 const installed=env.BiomeArtV3.ground;vm.runInContext(source,env);assert.equal(installed,env.BiomeArtV3.ground);
 assert(oldGround>=10);assert.equal(depth,0);
-console.log('PASS: 7 role-specific landmarks/inlays; only one tall landmark per room; 4 native/aliased families; finite coordinates; v21/biome/viewport gates; prop fade; no RNG/state mutation; balanced canvas stack; idempotent install.');
+console.log('PASS: 7 distinct deterministic floor silhouettes with clear central fight lane; 7 role-specific landmarks/inlays; only one tall landmark per room; 4 native/aliased families; finite coordinates; v21/biome/viewport gates; prop fade; no RNG/state mutation; balanced canvas stack; idempotent install.');

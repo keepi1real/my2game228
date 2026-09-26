@@ -8,6 +8,7 @@
     { "id": "enemies", "file": "v20-enemies.js", "after": ["storage"] },
     { "id": "maps", "file": "v20-maps.js", "after": ["enemies"] },
     { "id": "tide-observatory", "file": "v21-tide-observatory-runtime.js", "after": ["maps", "preview-storage"] },
+    { "id": "tide-observatory-boss", "file": "v21-tide-observatory-boss.js", "after": ["tide-observatory", "enemies"] },
     { "id": "asset-loading", "file": "v20-asset-loading.js", "after": ["maps"] },
     { "id": "design", "file": "v20-design.js", "after": ["asset-loading"] },
     { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
