@@ -55,7 +55,9 @@ jobs:
       - name: Проверить расположение и рисование деталей карт
         run: |
           node tools/test-v20-map-placement.js
+          node tools/test-v20-map-reachability.cjs
           node tools/test-v20-map-art.cjs
+          node tools/test-v20-matte-floor.cjs
           node tools/test-v20-room-rhythm.js
           node tools/test-v20-asset-loading.js
           node tools/test-v20-readability-unit.cjs
@@ -64,6 +66,10 @@ jobs:
           node tools/test-v20-combat-visibility.js
           node tools/test-v20-save-atomic.js
           node tools/test-v20-save-atomic-integration.js
+          node tools/test-v20-wave-recovery.js
+          node tools/test-v20-wave-recovery-integration.js
+          node tools/test-v20-hero-progression.cjs
+          node tools/test-v20-hero-mastery-ui.cjs
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере
