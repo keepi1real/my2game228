@@ -56,9 +56,14 @@ jobs:
         run: |
           node tools/test-v20-map-placement.js
           node tools/test-v20-map-art.cjs
+          node tools/test-v20-room-rhythm.js
           node tools/test-v20-asset-loading.js
           node tools/test-v20-readability-unit.cjs
           node tools/test-v20-readability.cjs
+          node tools/test-v20-interactables.cjs
+          node tools/test-v20-combat-visibility.js
+          node tools/test-v20-save-atomic.js
+          node tools/test-v20-save-atomic-integration.js
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере

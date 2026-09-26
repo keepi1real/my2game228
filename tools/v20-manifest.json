@@ -10,6 +10,10 @@
     { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
     { "id": "map-placement", "file": "v20-map-placement.js", "after": ["maps"] },
     { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] },
-    { "id": "readability", "file": "v20-readability.js", "after": ["map-art", "heroes"] }
+    { "id": "room-rhythm", "file": "v20-room-rhythm.js", "after": ["map-art"] },
+    { "id": "readability", "file": "v20-readability.js", "after": ["map-art", "heroes"] },
+    { "id": "interactables", "file": "v20-interactables.js", "after": ["readability"] },
+    { "id": "combat-visibility", "file": "v20-combat-visibility.js", "after": ["interactables"] },
+    { "id": "save-atomic", "file": "v20-save-atomic.js", "after": ["maps"] }
   ]
 }
