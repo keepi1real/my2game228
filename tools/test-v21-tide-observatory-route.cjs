@@ -119,8 +119,15 @@ function audit(j, map) {
       assert.equal(h.g.enemies.find(e=>e.isBoss&&e.homeRoom===15)?.def.name,chapter.bossName);
       assert.equal(actual.corridors.length,chapter.edges.length);
       const walk=(blocked)=>{const seen=new Set([actual.start]),queue=[actual.start];for(let i=0;i<queue.length;i++)for(const id of actual.rooms[queue[i]].links)if(!blocked.has(id)&&!seen.has(id)){seen.add(id);queue.push(id);}return seen;};
-      assert(walk(new Set([3,5,6,10,11,12,13])).has(15),'boss route exists without optional wing and elites');
+      assert(walk(new Set([5,10,11,12])).has(15),'direct route exists without reward wing');
+      assert(walk(new Set([2,3,6,7,8,9])).has(15),'long reward wing offers a complete alternate route');
+      for (const gate of [13,14])
+        assert(!walk(new Set([gate])).has(15),`room ${gate} cannot be bypassed on the way to the boss`);
       assert(walk(new Set([3,6,13])).has(5),'reward wing remains accessible');
+      const distance=Array(actual.rooms.length).fill(Infinity),steps=[actual.start];distance[actual.start]=0;
+      for(let i=0;i<steps.length;i++)for(const next of actual.rooms[steps[i]].links)
+        if(distance[next]===Infinity){distance[next]=distance[steps[i]]+1;steps.push(next);}
+      assert(distance[15]>=9,'boss cannot be reached through a short cross-room shortcut');
       const snapshot=JSON.stringify(actual);
       const result=audit(actual,map);
       assert.equal(JSON.stringify(actual),snapshot,'audit changed generated journey');

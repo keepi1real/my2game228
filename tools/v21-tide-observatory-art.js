@@ -7,6 +7,17 @@
   const palette=Object.freeze({floor:'#24343d',slate:'#344b55',side:'#172933',top:'#61777b',brass:'#b49a67',water:'#7bb9b1'});
   const metrics={rooms:0,props:0,faded:0,roleMarks:0,landmarks:0},scopes=new WeakMap(),cache=new WeakMap();
   const roles=Object.freeze({start:2,combat:3,elite:5,treasure:2,rest:1,boss:7,event:3});
+  // Broad flank silhouettes carry room identity at gameplay zoom. All are
+  // flush service inlays, with no new obstacles or markings in the fight lane.
+  const serviceLayouts={
+    start:{rows:[.25,.60],width:.16,height:.22,cut:10,ink:'#30464e',marks:1},
+    combat:{rows:[.22,.43,.64],width:.18,height:.13,cut:5,ink:'#354950',marks:3},
+    elite:{rows:[.29,.61],width:.19,height:.24,cut:24,ink:'#3b484b',marks:2},
+    treasure:{rows:[.20,.36,.52,.68],width:.15,height:.10,cut:7,ink:'#414b4b',marks:4},
+    rest:{rows:[.43],width:.20,height:.48,cut:28,ink:'#304e52',marks:1},
+    boss:{rows:[.25,.63],width:.22,height:.27,cut:30,ink:'#3b4c53',marks:5},
+    event:{rows:[.21,.45,.69],width:.14,height:.17,cut:18,ink:'#344b51',marks:2}
+  };
   const instruments=Object.freeze({tidepillar:'gauge',tidebasin:'basin',tidescholar:'vane',tideshelves:'register',tidewall:'sluice',cistern:'basin',wall:'sluice',armory:'register'});
   function roleSign(c,role,x,y,sx,sy){
     c.save();c.translate(x,y);c.scale(sx,sy);c.lineWidth=2.5;c.beginPath();
@@ -52,10 +63,19 @@
     light.addColorStop(0,'rgba(124,165,165,.12)');light.addColorStop(1,'rgba(6,16,23,.12)');c.fillStyle=light;c.fillRect(b.x,b.y,w,h);
     // Large slate maintenance plates, confined to the flanks. Their bevel is
     // flush inlay rather than a raised obstacle. Broad scale survives zoom-out.
-    for(const side of [-1,1])for(let i=0;i<3;i++){
-      const px=cx+side*w*.37,py=b.y+h*(.23+i*.25),pw=Math.min(116,w*.16),ph=Math.min(84,h*.17);
-      polygon(c,[[px-pw*.5+12,py-ph*.5],[px+pw*.5,py-ph*.5],[px+pw*.5,py+ph*.5-10],[px+pw*.5-12,py+ph*.5],[px-pw*.5,py+ph*.5],[px-pw*.5,py-ph*.5+10]],i%2?'#30464e':'#2d424b');
-      c.strokeStyle='rgba(143,173,172,.22)';c.lineWidth=1;c.beginPath();c.moveTo(px-pw*.5+12,py-ph*.5+2);c.lineTo(px+pw*.5-3,py-ph*.5+2);c.stroke();
+    const service=serviceLayouts[room.role]||serviceLayouts.start;
+    for(const side of [-1,1])for(let i=0;i<service.rows.length;i++){
+      const stagger=room.role==='event'?side*(i%2?.018:-.018)*w:0;
+      const px=cx+side*w*.39+stagger,py=b.y+h*service.rows[i],pw=Math.min(158,w*service.width),ph=Math.min(240,h*service.height),cut=Math.min(service.cut,pw*.3,ph*.3);
+      polygon(c,[[px-pw*.5+cut,py-ph*.5],[px+pw*.5,py-ph*.5],[px+pw*.5,py+ph*.5-cut],[px+pw*.5-cut,py+ph*.5],[px-pw*.5,py+ph*.5],[px-pw*.5,py-ph*.5+cut]],service.ink);
+      c.strokeStyle='rgba(143,173,172,.22)';c.lineWidth=1;c.beginPath();c.moveTo(px-pw*.5+cut,py-ph*.5+2);c.lineTo(px+pw*.5-3,py-ph*.5+2);c.stroke();
+      // Sparse brass register bars distinguish long stilling beds, slotted
+      // sluice covers and archive drawers without resembling attack telegraphs.
+      c.fillStyle='rgba(180,154,103,.25)';
+      for(let mark=0;mark<service.marks;mark++){
+        const my=py+ph*((mark+1)/(service.marks+1)-.5);
+        c.fillRect(px-pw*.27,my,pw*.54,room.role==='rest'?3:2);
+      }
       // Recessed fasteners identify a bolted service plate without texture noise.
       c.fillStyle='rgba(180,154,103,.45)';for(const a of [-1,1])for(const d of [-1,1])c.fillRect(px+a*(pw*.5-13)-2,py+d*(ph*.5-13)-2,4,4);
     }
