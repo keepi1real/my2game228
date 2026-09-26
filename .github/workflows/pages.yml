@@ -70,12 +70,17 @@ jobs:
           node tools/test-v20-wave-recovery-integration.js
           node tools/test-v20-hero-progression.cjs
           node tools/test-v20-hero-mastery-ui.cjs
+          node tools/test-v21-tide-observatory-art.cjs
+          node tools/test-v21-tide-observatory-route.cjs
+          node tools/test-v21-chapter-compat.cjs
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере
         run: node tools/test-v19-browser.js
       - name: Проверить новую экспедицию в браузере
         run: node tools/test-v20-browser.js
+      - name: Проверить новую главу в браузере
+        run: node tools/test-v21-browser.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

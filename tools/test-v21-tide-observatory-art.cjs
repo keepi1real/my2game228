@@ -1,0 +1,40 @@
+/* node tools/test-v21-tide-observatory-art.cjs */
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(require('node:path').join(__dirname,'v21-tide-observatory-art.js'),'utf8');
+let depth=0,calls=0,oldGround=0,oldProp=0;const stack=[];
+const context=new Proxy({globalAlpha:1,save(){depth++;stack.push(this.globalAlpha);},restore(){depth--;this.globalAlpha=stack.pop();assert(depth>=0);},createLinearGradient(){return {addColorStop(){}};}},{get(t,k){if(k in t)return t[k];return (...args)=>{for(const value of args)if(typeof value==='number')assert(Number.isFinite(value),`${k}: nonfinite coordinate`);calls++;};},set(t,k,v){t[k]=v;return true;}});
+const math=Object.create(Math);math.random=()=>{throw Error('Art consumed gameplay RNG');};
+const env={window:{},Math:math,BiomeArtV3:{ground(){oldGround++;return 'ground';},prop(){oldProp++;return 'prop';}}};vm.createContext(env);vm.runInContext(source,env);
+const g={journey:{v21MapVersion:21}},room={id:1,biome:'tideobservatory',role:'combat',center:{x:300,y:200},polygons:[[[0,0],[600,0],[580,400],[30,400]]]};
+const view={x:0,y:0,w:800,h:600},o={kind:'biome-prop',biome:'tideobservatory',x:230,y:180,r:30,height:140,landmark:true};
+const initial=JSON.stringify({g,room,o});
+for(const role of Object.keys(env.window.V21TideObservatoryArt.roles)){
+  assert.equal(env.BiomeArtV3.ground(context,g,[{...room,role}],[],view),'ground');
+  assert.equal(env.window.V21TideObservatoryArt.metrics.rooms,1);
+  env.BiomeArtV3.prop(context,o,{x:230,y:140},0);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.props,1);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.faded,1);
+  assert.equal(context.globalAlpha,1);assert.equal(depth,0);
+}
+assert.equal(initial,JSON.stringify({g,room,o}));assert.equal(oldProp,0);
+// Native landmarks and RoomCraft's alias must use the new renderer even when
+// the adapter does not provide the generic biome-prop kind.
+for(const sprite of ['tidepillar','tidebasin','tidescholar','tideshelves']){
+  const landmark={...o,sprite,kind:'landmark',landmark:true,homeRoom:3};
+  const snapshot=JSON.stringify(landmark),beforeProps=env.window.V21TideObservatoryArt.metrics.props;
+  env.BiomeArtV3.prop(context,landmark,{x:230,y:160},0);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.props,beforeProps+1);assert.equal(oldProp,0);
+  assert.equal(JSON.stringify(landmark),snapshot);assert.equal(depth,0);
+  const variantGame={journey:{v21MapVersion:21,rooms:[{id:3,design:{landmark:sprite}}]}};
+  env.BiomeArtV3.ground(context,variantGame,[],[],view);
+  env.BiomeArtV3.prop(context,{...landmark,sprite:'landmark-v15-tideobservatory'},null,0);
+  assert.equal(env.window.V21TideObservatoryArt.metrics.props,1);assert.equal(oldProp,0);assert.equal(depth,0);
+}
+const before=calls;
+env.BiomeArtV3.ground(context,g,[{...room,biome:'tide'}],[],view);assert.equal(calls,before);
+env.BiomeArtV3.ground(context,g,[room],[],{x:5000,y:5000,w:100,h:100});assert.equal(calls,before);
+env.BiomeArtV3.ground(context,{journey:{v20MapVersion:20}},[room],[],view);assert.equal(calls,before);
+assert.equal(env.BiomeArtV3.prop(context,o,null,0),'prop');assert.equal(oldProp,1);
+const installed=env.BiomeArtV3.ground;vm.runInContext(source,env);assert.equal(installed,env.BiomeArtV3.ground);
+assert(oldGround>=10);assert.equal(depth,0);
+console.log('PASS: 7 room roles; 4 native/aliased landmark families; finite coordinates; v21/biome/viewport gates; prop fade; no RNG or state mutation; balanced canvas stack; idempotent install.');

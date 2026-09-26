@@ -17,12 +17,21 @@ function canonical(file) {
 function compose(baseFile, manifestFile) {
   const baseBytes = fs.readFileSync(baseFile);
   const bytes = baseFile.endsWith('.gz') ? zlib.gunzipSync(baseBytes) : baseBytes;
-  const html = bytes.toString('utf8');
+  const originalHtml = bytes.toString('utf8');
   const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
   if (manifest.version !== 1 || !Array.isArray(manifest.patches) || !manifest.patches.length) fail('Manifest needs version: 1 and a nonempty patches array');
   const baseSha256 = sha(bytes);
   if (manifest.baseSha256 && manifest.baseSha256 !== baseSha256) fail('Base SHA-256 does not match manifest');
-  if (html.includes(MARKER)) fail('Input is already composed; use the original v19');
+  if (originalHtml.includes(MARKER)) fail('Input is already composed; use the original v19');
+  let html=originalHtml;
+  const chapterFile=manifest.chapter ? path.resolve(path.dirname(manifestFile),manifest.chapter) : null;
+  const chapterHelper=chapterFile ? path.resolve(__dirname,'v20-chapter-extension.cjs') : null;
+  let chapterReport;
+  if(chapterFile){
+    const chapter=JSON.parse(fs.readFileSync(chapterFile,'utf8'));
+    html=require(chapterHelper).extendChapter(html,chapter);
+    chapterReport={id:chapter.id,sha256:sha(Buffer.from(JSON.stringify(chapter)))};
+  }
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)];
   if (scripts.length !== 1) fail('Expected exactly one v19 inline script');
   const source = scripts[0][1];
@@ -30,7 +39,7 @@ function compose(baseFile, manifestFile) {
   for (const signature of ['class Game ', 'const HEROES =', '// ---- js/arena-craft-v19.js ----']) {
     if (!source.includes(signature)) fail('Unsupported base: missing ' + signature);
   }
-  const ids = new Set(), inputFiles = [baseFile, manifestFile], modules = [];
+  const ids = new Set(), inputFiles = [baseFile, manifestFile,...(chapterFile?[chapterFile,chapterHelper]:[])], modules = [];
   for (const entry of manifest.patches) {
     if (!entry || !/^[a-z][a-z0-9-]*$/.test(entry.id) || ids.has(entry.id)) fail('Patch IDs must be unique lowercase slugs');
     if (typeof entry.file !== 'string' || !entry.file) fail('Patch file is required for ' + entry.id);
@@ -43,7 +52,7 @@ function compose(baseFile, manifestFile) {
     modules.push({id:entry.id, code, sha256:sha(Buffer.from(code))});
     inputFiles.push(file); ids.add(entry.id);
   }
-  const report = {version:20, baseSha256, patches:modules.map(({id,sha256}) => ({id,sha256}))};
+  const report = {version:20, baseSha256,...(chapterReport?{chapter:chapterReport}:{}), patches:modules.map(({id,sha256}) => ({id,sha256}))};
   const additions = [MARKER,
     'window.V20Build = ' + JSON.stringify({...report, installed:[]}) + ';',
     ...modules.map(m => '\n// v20 patch: ' + m.id + '\n' + m.code + '\n;window.V20Build.installed.push(' + JSON.stringify(m.id) + ');'),
