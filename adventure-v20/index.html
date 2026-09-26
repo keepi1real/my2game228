@@ -16,7 +16,7 @@
       try {
         // The source HTML contains its artwork and scripts. Keep it losslessly
         // compressed: GitHub's browser uploader limits individual files to 25 MB.
-        const response = await fetch('adventure-v20-play.html.gz?art-audit=4', {cache: 'no-cache'});
+        const response = await fetch('adventure-v20-play.html.gz?world-pass=6', {cache: 'no-cache'});
         if (!response.ok) throw new Error('HTTP ' + response.status);
         const bytes = await response.arrayBuffer();
         const zipped = new Uint8Array(bytes);
