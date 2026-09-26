@@ -74,6 +74,8 @@ jobs:
           node tools/test-v21-tide-observatory-route.cjs
           node tools/test-v21-chapter-compat.cjs
           node tools/test-v21-observatory-boss.cjs
+          node tools/test-v21-tide-observatory-meridian.cjs
+          node tools/test-v21-published-route-save.cjs
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере
