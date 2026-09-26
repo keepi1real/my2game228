@@ -1,10 +1,13 @@
 {
   "version": 1,
   "baseSha256": "62d8a85503ed1db2293792fc72e993cd77117199d6d125bcd3926bf687649a19",
+  "chapter": "v21-tide-observatory-level.json",
   "patches": [
     { "id": "storage", "file": "v20-storage.js" },
+    { "id": "preview-storage", "file": "v21-preview-start.js", "after": ["storage"] },
     { "id": "enemies", "file": "v20-enemies.js", "after": ["storage"] },
     { "id": "maps", "file": "v20-maps.js", "after": ["enemies"] },
+    { "id": "tide-observatory", "file": "v21-tide-observatory-runtime.js", "after": ["maps", "preview-storage"] },
     { "id": "asset-loading", "file": "v20-asset-loading.js", "after": ["maps"] },
     { "id": "design", "file": "v20-design.js", "after": ["asset-loading"] },
     { "id": "heroes", "file": "v20-heroes.js", "after": ["design"] },
@@ -13,11 +16,12 @@
     { "id": "map-placement", "file": "v20-map-placement.js", "after": ["maps"] },
     { "id": "map-art", "file": "v20-map-art.js", "after": ["design", "map-placement"] },
     { "id": "matte-floor", "file": "v20-matte-floor.js", "after": ["map-art"] },
+    { "id": "tide-observatory-art", "file": "v21-tide-observatory-art.js", "after": ["matte-floor", "tide-observatory"] },
     { "id": "room-rhythm", "file": "v20-room-rhythm.js", "after": ["matte-floor"] },
     { "id": "readability", "file": "v20-readability.js", "after": ["map-art", "heroes"] },
     { "id": "interactables", "file": "v20-interactables.js", "after": ["readability"] },
-    { "id": "combat-visibility", "file": "v20-combat-visibility.js", "after": ["interactables"] },
-    { "id": "save-atomic", "file": "v20-save-atomic.js", "after": ["maps"] },
+    { "id": "combat-visibility", "file": "v20-combat-visibility.js", "after": ["interactables", "tide-observatory-art"] },
+    { "id": "save-atomic", "file": "v20-save-atomic.js", "after": ["tide-observatory", "preview-storage"] },
     { "id": "wave-recovery", "file": "v20-wave-recovery.js", "after": ["save-atomic", "enemies"] }
   ]
 }

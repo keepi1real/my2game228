@@ -3,8 +3,9 @@
 (() => {
   'use strict';
   if(window.V20SaveAtomic)return;
-  const key='undermountain-biomes-v20-preview';
-  if(SeamlessFloor.key!==key)throw new Error('v20-save-atomic requires isolated preview storage');
+  const key=SeamlessFloor.key;
+  if(!['undermountain-biomes-v20-preview','undermountain-biomes-v21-observatory-preview'].includes(key))
+    throw new Error('v20-save-atomic requires isolated preview storage');
   let storage;
   try {storage=localStorage;} catch (_) {
     // The base game already handles inaccessible storage and cannot write here.
