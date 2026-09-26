@@ -25,9 +25,11 @@
     return mastery(this) === 'mithrandir' ? Math.min(.6, cdr + .02) : cdr;
   };
 
-  const baseSpeed = Player.prototype.speed;
-  Player.prototype.speed = function () {
-    const speed = baseSpeed.call(this);
-    return mastery(this) === 'peregrin' ? speed * 1.04 : speed;
+  // Nema is already faster than most pursuers. A permanent movement bonus
+  // widens the safe kiting gap, so her mastery rewards close combat instead.
+  const baseAttackCooldown = Player.prototype.attackCooldown;
+  Player.prototype.attackCooldown = function () {
+    const cooldown = baseAttackCooldown.call(this);
+    return mastery(this) === 'peregrin' ? cooldown * .96 : cooldown;
   };
 })();

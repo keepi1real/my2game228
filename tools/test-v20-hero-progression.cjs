@@ -14,21 +14,22 @@ vm.runInContext(`
     crit() { return this.gear.crit; }
     cdr() { return this.gear.cdr; }
     speed() { return this.gear.speed; }
+    attackCooldown() { return this.gear.attackCooldown; }
   }
   globalThis.Player = Player;
 `, context);
 vm.runInContext(source, context, { filename: 'v20-hero-progression.js' });
 
-const baseline = { armor: 6, damage: 100, crit: .11, cdr: .59, speed: 150 };
+const baseline = { armor: 6, damage: 100, crit: .11, cdr: .59, speed: 150, attackCooldown: .5 };
 const expected = {
   arator: { armor: 7 },
   baldin: { damage: 104 },
   faelas: { crit: .14 },
   mithrandir: { cdr: .6 },
-  peregrin: { speed: 156 },
+  peregrin: { attackCooldown: .48 },
 };
 function stats(player) {
-  return Object.fromEntries(['armor', 'damage', 'crit', 'cdr', 'speed'].map(k => [k, player[k]()]));
+  return Object.fromEntries(['armor', 'damage', 'crit', 'cdr', 'speed', 'attackCooldown'].map(k => [k, player[k]()]));
 }
 for (const id of Object.keys(expected)) {
   const hero = Object.freeze({ id });
@@ -55,4 +56,8 @@ for (const id of Object.keys(expected)) {
 assert.deepEqual(stats(new context.Player({ id: 'unknown' }, 40, baseline)), baseline);
 const capped = new context.Player({ id: 'mithrandir' }, 10, { ...baseline, cdr: .6 });
 assert.equal(capped.cdr(), .6);
+// Nema's v20 base movement is 165; mastery must not widen her retreat gap.
+const nema = new context.Player({ id: 'peregrin' }, 10, { ...baseline, speed: 165, attackCooldown: .31 });
+assert.equal(nema.speed(), 165);
+assert.ok(Math.abs(nema.attackCooldown() - .2976) < 1e-12);
 console.log('v20 hero mastery: 5 heroes, level gate, three checkpoint round trips and CDR cap OK');
