@@ -15,7 +15,7 @@ async function audit(options={}){
     assert(!g.map.circleBlocked(g.player.x,g.player.y,g.player.r),'blocked '+team+' '+hero.id);
     assert.equal(g.enemies.filter(e=>e.isBoss&&e.homeRoom===15).length,1);
     for(const e of g.enemies)for(const key of ['x','y','hp','maxHp','dmg','speed'])assert(Number.isFinite(e[key]),`${team} ${e.type}.${key}`);
-    const before=geometry();g.saveJourney();assert(g.resumeSeamlessJourney(),team+' resume');assert.equal(geometry(),before,'geometry changed on resume');
+    const before=geometry(),writes=h.writes.length;g.saveJourney();assert.equal(h.writes.length-writes,1,'one atomic write for '+team);assert(g.resumeSeamlessJourney(),team+' resume');assert.equal(geometry(),before,'geometry changed on resume');
     assert.equal(a.SeamlessFloor.key,h.env.V27Preview.key(id));
     g.renderer.render();await h.settleImages();
     h.step(.12);assert.equal(g.state,'run');g.renderer.render();starts++;

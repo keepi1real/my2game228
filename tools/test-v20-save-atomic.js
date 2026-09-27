@@ -2,16 +2,17 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'v20-save-atomic.js'),'utf8');
 const key='undermountain-biomes-v20-preview',legacy='undermountain-biomes-v3';
-function setup(failAt=0) {
+function setup(failAt=0,initialKey=key) {
   let writes=0;const persisted=new Map([[key,'{"old":true}'],[legacy,'legacy checkpoint']]);
   class Storage {
     getItem(k){return persisted.get(k)??null;}
-    setItem(k,v){if(k===key&&++writes===failAt)throw Error('QuotaExceededError');persisted.set(k,String(v));}
+    setItem(k,v){if((k===key||k.startsWith('undermountain-v27-'))&&++writes===failAt)throw Error('QuotaExceededError');persisted.set(k,String(v));}
   }
   const localStorage=new Storage();
   class Game {
-    constructor(){this.journey={seamless:true,v20MapVersion:20,seed:42,saveTimer:5};this.meta=false;}
+    constructor(){this.journey={seamless:true,v20MapVersion:20,seed:42,saveTimer:5};this.meta=false;this.saveKey=initialKey;}
     saveJourney(){
+      const key=this.saveKey;
       if(this.meta)localStorage.setItem('meta','progress');
       localStorage.setItem(key,this.dead?'null':JSON.stringify({version:4,seed:42,player:{x:44,y:55}}));
       this.journey.saveTimer=0;
@@ -20,7 +21,7 @@ function setup(failAt=0) {
       if(this.explode)throw Error('inner failed');return 7;
     }
   }
-  const env={window:{},Storage,localStorage,Game,SeamlessFloor:{key}};vm.createContext(env);vm.runInContext(source,env);
+  const env={window:{},Storage,localStorage,Game,SeamlessFloor:{key:initialKey}};vm.createContext(env);vm.runInContext(source,env);
   return {env,g:new Game(),persisted,writes:()=>writes};
 }
 // The old two-write algorithm would fail on write 2. Atomic save never calls it.
@@ -34,4 +35,13 @@ crash.g.explode=false;crash.g.saveJourney();assert.equal(crash.writes(),1,'trans
 const meta=setup();meta.g.meta=true;meta.g.saveJourney();assert.equal(meta.persisted.get('meta'),'progress');assert.equal(meta.writes(),1);
 const methods=meta.env.Storage.prototype.setItem;vm.runInContext(source,meta.env);assert.equal(meta.env.Storage.prototype.setItem,methods,'idempotent');
 meta.env.localStorage.setItem(key,'outside');assert.equal(meta.persisted.get(key),'outside','writes outside save remain native');
+const switched=setup();
+for(const level of ['drownedwharf','redquarry','darkroot']){
+  const destination='undermountain-v27-'+level,before=switched.writes();
+  switched.env.SeamlessFloor.key=destination;switched.g.saveKey=destination;
+  switched.g.saveJourney();assert.equal(switched.writes()-before,1,'one write after switching to '+level);
+  assert.equal(JSON.parse(switched.persisted.get(destination)).mapVersion,20);
+  assert.equal(switched.persisted.get(key),'{"old":true}','preview save remains unchanged');
+}
+const direct=setup(0,'undermountain-v27-darkroot');direct.g.saveJourney();assert.equal(direct.writes(),1,'direct map URL can install and save atomically');
 console.log('PASS atomic checkpoint: staged read/write, one commit, second-write failure removed, quota preserves old data, death tombstone, thrown save, meta/legacy isolation, idempotence.');
