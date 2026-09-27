@@ -25,6 +25,7 @@ const out = path.resolve(args.find((a) => !a.startsWith('--')) || path.join(root
 // слой кэша только помешает обновлению игры вместе с приложением.
 const FILES = ['index.html', 'adventure-v19-play.html.gz', 'archive.html', 'manifest.webmanifest'].concat(pwa ? ['sw.js', '.nojekyll'] : []);
 const DIRS = ['css', 'js', 'assets', 'lens-trial', 'adventure-v20'];
+if(fs.existsSync(path.join(root,'three-frontiers/payload.json')))DIRS.push('three-frontiers');
 
 function copyDir(from, to) {
   fs.mkdirSync(to, { recursive: true });

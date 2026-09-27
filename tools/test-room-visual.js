@@ -5,11 +5,17 @@ const root=path.resolve(__dirname,'..'),out=path.join(root,'dist/room-visual');
 async function harness(options={}){
   const pending=[],events={},writes=[],storage=new Map();
   function LocalImage(){const img=new Image(),src=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(img),'src');
-    Object.defineProperty(img,'src',{set(v){src.set.call(img,v.startsWith('assets/')?path.join(root,v):v);},get(){return src.get.call(img);}});
-    pending.push(new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;}));return img;
+    let onload,onerror,resolveLoad,rejectLoad;
+    img.onload=(...args)=>{resolveLoad?.();onload?.apply(img,args);};
+    img.onerror=(error)=>{rejectLoad?.(error);onerror?.call(img,error);};
+    const nativeLoad=img.onload,nativeError=img.onerror;
+    Object.defineProperty(img,'onload',{get:()=>nativeLoad,set:fn=>{onload=fn;}});
+    Object.defineProperty(img,'onerror',{get:()=>nativeError,set:fn=>{onerror=fn;}});
+    Object.defineProperty(img,'src',{set(v){const p=new Promise((resolve,reject)=>{resolveLoad=resolve;rejectLoad=reject;});p.catch(()=>{});pending.push(p);src.set.call(img,v.startsWith('assets/')?path.join(root,v):v.startsWith('../assets/')?path.join(root,v.slice(3)):v);},get(){return src.get.call(img);}});
+    return img;
   }
-  const canvas=createCanvas(1024,640);canvas.addEventListener=()=>{};canvas.getBoundingClientRect=()=>({x:0,y:0,left:0,top:0,width:1024,height:640});
-  const ui=options.ui||{innerHTML:'',querySelectorAll:()=>[],querySelector:()=>null},document={readyState:'loading',createElement:()=>createCanvas(1,1),getElementById:id=>id==='game'?canvas:ui};
+  const canvas=createCanvas(1024,640);canvas.style={cssText:'',imageRendering:''};canvas.addEventListener=()=>{};canvas.getBoundingClientRect=()=>({x:0,y:0,left:0,top:0,width:1024,height:640});
+  const ui=options.ui||{innerHTML:'',querySelectorAll:()=>[],querySelector:()=>null},document={readyState:'loading',head:{appendChild:()=>{}},createElement:()=>createCanvas(1,1),getElementById:id=>id==='game'?canvas:ui};
   const env={Image:LocalImage,document,console,performance:{now:()=>0},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{storage.set(k,v);writes.push(k);}},addEventListener:(id,fn)=>(events[id]??=[]).push(fn)};
   env.window=env;vm.createContext(env);
   env.requestAnimationFrame=fn=>{env.lastFrame=fn;return 1;};
@@ -17,7 +23,8 @@ async function harness(options={}){
   else for(const [,file] of fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/<script src="([^"]+)"><\/script>/g))if(file!=='js/main.js')vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),env,{filename:file});
   await Promise.all(pending);
   const a=vm.runInContext('({Game,Save,RoomVisualArt,VisualRoomPreview,makeVisualRoomMap,TILE,T_FLOOR})',env),g=new a.Game(canvas);env.game=g;
-  return {env,a,g,canvas,ui,storage,writes,events};
+  const settleImages=async()=>{let n=-1;while(n!==pending.length){n=pending.length;await Promise.all(pending);}};
+  return {env,a,g,canvas,ui,storage,writes,events,settleImages};
 }
 module.exports={harness};
 if(require.main===module)(async()=>{

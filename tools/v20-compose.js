@@ -32,6 +32,11 @@ function compose(baseFile, manifestFile) {
     html=require(chapterHelper).extendChapter(html,chapter);
     chapterReport={id:chapter.id,sha256:sha(Buffer.from(JSON.stringify(chapter)))};
   }
+  const extraChapterFiles=(manifest.chapters||[]).map(file=>path.resolve(path.dirname(manifestFile),file));
+  if(extraChapterFiles.length){
+    if(!chapterFile)fail('Additional chapters require the v21 registry extension');
+    html=require('./v27-chapters.cjs').extendChapters(html,extraChapterFiles.map(file=>JSON.parse(fs.readFileSync(file,'utf8'))));
+  }
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)];
   if (scripts.length !== 1) fail('Expected exactly one v19 inline script');
   const source = scripts[0][1];
@@ -39,7 +44,7 @@ function compose(baseFile, manifestFile) {
   for (const signature of ['class Game ', 'const HEROES =', '// ---- js/arena-craft-v19.js ----']) {
     if (!source.includes(signature)) fail('Unsupported base: missing ' + signature);
   }
-  const ids = new Set(), inputFiles = [baseFile, manifestFile,...(chapterFile?[chapterFile,chapterHelper]:[])], modules = [];
+  const ids = new Set(), inputFiles = [baseFile, manifestFile,...(chapterFile?[chapterFile,chapterHelper]:[]),...extraChapterFiles,...(extraChapterFiles.length?[path.join(__dirname,'v27-chapters.cjs')]:[])], modules = [];
   for (const entry of manifest.patches) {
     if (!entry || !/^[a-z][a-z0-9-]*$/.test(entry.id) || ids.has(entry.id)) fail('Patch IDs must be unique lowercase slugs');
     if (typeof entry.file !== 'string' || !entry.file) fail('Patch file is required for ' + entry.id);
