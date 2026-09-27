@@ -1,0 +1,1045 @@
+{
+  "format": 2,
+  "use": "Red Quarry paint only; all damage and telegraph timing remain with combat",
+  "rows": [
+    "idle",
+    "walk",
+    "attack/cast"
+  ],
+  "columns": 4,
+  "runtimeCell": [
+    192,
+    192
+  ],
+  "actors": {
+    "quarry_cleaver": {
+      "file": "quarry_cleaver.png",
+      "source": "quarry_cleaver-source.png",
+      "dimensions": [
+        768,
+        576
+      ],
+      "sourceDimensions": [
+        1448,
+        1086
+      ],
+      "figureHeight": 165.62,
+      "displayHeight": 68,
+      "anchor": [
+        96,
+        186
+      ],
+      "frames": [
+        {
+          "sourceRect": [
+            0,
+            0,
+            377,
+            362
+          ],
+          "alphaBounds": [
+            32,
+            65,
+            377,
+            346
+          ],
+          "runtimeRect": [
+            10,
+            47,
+            171,
+            139
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            377,
+            0,
+            355,
+            362
+          ],
+          "alphaBounds": [
+            391,
+            49,
+            732,
+            345
+          ],
+          "runtimeRect": [
+            203,
+            39,
+            169,
+            147
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            732,
+            0,
+            357,
+            362
+          ],
+          "alphaBounds": [
+            736,
+            71,
+            1089,
+            347
+          ],
+          "runtimeRect": [
+            392,
+            49,
+            175,
+            137
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1089,
+            0,
+            359,
+            362
+          ],
+          "alphaBounds": [
+            1100,
+            81,
+            1436,
+            348
+          ],
+          "runtimeRect": [
+            588,
+            54,
+            167,
+            132
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            362,
+            368,
+            353
+          ],
+          "alphaBounds": [
+            42,
+            413,
+            368,
+            691
+          ],
+          "runtimeRect": [
+            15,
+            240,
+            162,
+            138
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            368,
+            362,
+            363,
+            353
+          ],
+          "alphaBounds": [
+            421,
+            400,
+            731,
+            696
+          ],
+          "runtimeRect": [
+            211,
+            231,
+            154,
+            147
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            731,
+            362,
+            359,
+            353
+          ],
+          "alphaBounds": [
+            769,
+            411,
+            1090,
+            698
+          ],
+          "runtimeRect": [
+            400,
+            236,
+            159,
+            142
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1090,
+            362,
+            358,
+            353
+          ],
+          "alphaBounds": [
+            1139,
+            418,
+            1441,
+            699
+          ],
+          "runtimeRect": [
+            597,
+            239,
+            150,
+            139
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            715,
+            362,
+            371
+          ],
+          "alphaBounds": [
+            14,
+            716,
+            355,
+            1050
+          ],
+          "runtimeRect": [
+            11,
+            404,
+            169,
+            166
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            362,
+            715,
+            394,
+            371
+          ],
+          "alphaBounds": [
+            393,
+            790,
+            756,
+            1051
+          ],
+          "runtimeRect": [
+            198,
+            441,
+            180,
+            129
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            756,
+            715,
+            357,
+            371
+          ],
+          "alphaBounds": [
+            756,
+            810,
+            1113,
+            1049
+          ],
+          "runtimeRect": [
+            391,
+            451,
+            177,
+            119
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1113,
+            715,
+            335,
+            371
+          ],
+          "alphaBounds": [
+            1122,
+            803,
+            1438,
+            1057
+          ],
+          "runtimeRect": [
+            593,
+            444,
+            157,
+            126
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        }
+      ],
+      "states": {
+        "idle": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "walk": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "attack": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "cast": [
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "runtimeDisplay": {
+        "height": 68,
+        "canonicalIdleAlphaHeight": 139,
+        "footWidth": 58,
+        "anchor": [
+          96,
+          186
+        ]
+      }
+    },
+    "quarry_scorcher": {
+      "file": "quarry_scorcher.png",
+      "source": "quarry_scorcher-source.png",
+      "dimensions": [
+        768,
+        576
+      ],
+      "sourceDimensions": [
+        1448,
+        1086
+      ],
+      "figureHeight": 151.65,
+      "displayHeight": 63,
+      "anchor": [
+        96,
+        186
+      ],
+      "frames": [
+        {
+          "sourceRect": [
+            0,
+            0,
+            375,
+            362
+          ],
+          "alphaBounds": [
+            105,
+            20,
+            375,
+            348
+          ],
+          "runtimeRect": [
+            35,
+            38,
+            122,
+            148
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            375,
+            0,
+            349,
+            362
+          ],
+          "alphaBounds": [
+            466,
+            13,
+            712,
+            350
+          ],
+          "runtimeRect": [
+            232,
+            34,
+            111,
+            152
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            724,
+            0,
+            362,
+            362
+          ],
+          "alphaBounds": [
+            789,
+            33,
+            1059,
+            348
+          ],
+          "runtimeRect": [
+            419,
+            44,
+            122,
+            142
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1086,
+            0,
+            362,
+            362
+          ],
+          "alphaBounds": [
+            1174,
+            15,
+            1420,
+            350
+          ],
+          "runtimeRect": [
+            616,
+            35,
+            111,
+            151
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            362,
+            384,
+            356
+          ],
+          "alphaBounds": [
+            76,
+            374,
+            384,
+            693
+          ],
+          "runtimeRect": [
+            26,
+            234,
+            139,
+            144
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            384,
+            362,
+            354,
+            356
+          ],
+          "alphaBounds": [
+            456,
+            373,
+            738,
+            700
+          ],
+          "runtimeRect": [
+            224,
+            231,
+            127,
+            147
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            738,
+            362,
+            348,
+            356
+          ],
+          "alphaBounds": [
+            797,
+            378,
+            1072,
+            695
+          ],
+          "runtimeRect": [
+            418,
+            235,
+            124,
+            143
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1086,
+            362,
+            362,
+            356
+          ],
+          "alphaBounds": [
+            1166,
+            375,
+            1437,
+            686
+          ],
+          "runtimeRect": [
+            611,
+            238,
+            122,
+            140
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            718,
+            362,
+            368
+          ],
+          "alphaBounds": [
+            47,
+            725,
+            361,
+            1021
+          ],
+          "runtimeRect": [
+            25,
+            437,
+            141,
+            133
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            362,
+            718,
+            362,
+            368
+          ],
+          "alphaBounds": [
+            405,
+            726,
+            695,
+            1022
+          ],
+          "runtimeRect": [
+            223,
+            437,
+            130,
+            133
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            724,
+            718,
+            407,
+            368
+          ],
+          "alphaBounds": [
+            731,
+            740,
+            1131,
+            1025
+          ],
+          "runtimeRect": [
+            390,
+            442,
+            180,
+            128
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1131,
+            718,
+            317,
+            368
+          ],
+          "alphaBounds": [
+            1149,
+            719,
+            1439,
+            1027
+          ],
+          "runtimeRect": [
+            607,
+            431,
+            130,
+            139
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        }
+      ],
+      "states": {
+        "idle": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "walk": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "attack": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "cast": [
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "runtimeDisplay": {
+        "height": 63,
+        "canonicalIdleAlphaHeight": 148,
+        "footWidth": 42,
+        "anchor": [
+          96,
+          186
+        ]
+      }
+    },
+    "quarry_cutter": {
+      "file": "quarry_cutter.png",
+      "source": "quarry_cutter-source.png",
+      "dimensions": [
+        768,
+        576
+      ],
+      "sourceDimensions": [
+        1448,
+        1086
+      ],
+      "figureHeight": 138.234,
+      "displayHeight": 88,
+      "anchor": [
+        96,
+        186
+      ],
+      "frames": [
+        {
+          "sourceRect": [
+            0,
+            0,
+            362,
+            362
+          ],
+          "alphaBounds": [
+            11,
+            55,
+            353,
+            309
+          ],
+          "runtimeRect": [
+            33,
+            92,
+            126,
+            94
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            362,
+            0,
+            360,
+            362
+          ],
+          "alphaBounds": [
+            372,
+            54,
+            718,
+            309
+          ],
+          "runtimeRect": [
+            224,
+            92,
+            128,
+            94
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            722,
+            0,
+            360,
+            362
+          ],
+          "alphaBounds": [
+            723,
+            50,
+            1082,
+            309
+          ],
+          "runtimeRect": [
+            413,
+            90,
+            133,
+            96
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1082,
+            0,
+            366,
+            362
+          ],
+          "alphaBounds": [
+            1082,
+            55,
+            1435,
+            310
+          ],
+          "runtimeRect": [
+            607,
+            92,
+            130,
+            94
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            362,
+            376,
+            286
+          ],
+          "alphaBounds": [
+            15,
+            388,
+            376,
+            636
+          ],
+          "runtimeRect": [
+            29,
+            286,
+            133,
+            92
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            376,
+            362,
+            356,
+            286
+          ],
+          "alphaBounds": [
+            380,
+            384,
+            732,
+            641
+          ],
+          "runtimeRect": [
+            223,
+            283,
+            130,
+            95
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            732,
+            362,
+            350,
+            286
+          ],
+          "alphaBounds": [
+            735,
+            387,
+            1082,
+            645
+          ],
+          "runtimeRect": [
+            416,
+            283,
+            128,
+            95
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1082,
+            362,
+            366,
+            286
+          ],
+          "alphaBounds": [
+            1082,
+            387,
+            1435,
+            633
+          ],
+          "runtimeRect": [
+            607,
+            287,
+            130,
+            91
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            0,
+            648,
+            360,
+            438
+          ],
+          "alphaBounds": [
+            11,
+            739,
+            341,
+            1017
+          ],
+          "runtimeRect": [
+            35,
+            467,
+            122,
+            103
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            360,
+            648,
+            299,
+            438
+          ],
+          "alphaBounds": [
+            361,
+            649,
+            633,
+            1023
+          ],
+          "runtimeRect": [
+            237,
+            432,
+            101,
+            138
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            659,
+            648,
+            488,
+            438
+          ],
+          "alphaBounds": [
+            660,
+            758,
+            1147,
+            1025
+          ],
+          "runtimeRect": [
+            390,
+            471,
+            180,
+            99
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        },
+        {
+          "sourceRect": [
+            1147,
+            648,
+            301,
+            438
+          ],
+          "alphaBounds": [
+            1147,
+            753,
+            1440,
+            1009
+          ],
+          "runtimeRect": [
+            618,
+            475,
+            108,
+            95
+          ],
+          "foot": [
+            96,
+            186
+          ]
+        }
+      ],
+      "states": {
+        "idle": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "walk": [
+          4,
+          5,
+          6,
+          7
+        ],
+        "attack": [
+          8,
+          9,
+          10,
+          11
+        ],
+        "cast": [
+          8,
+          9,
+          10,
+          11
+        ]
+      },
+      "runtimeDisplay": {
+        "height": 102,
+        "canonicalIdleAlphaHeight": 94,
+        "footWidth": 92,
+        "anchor": [
+          96,
+          186
+        ]
+      }
+    }
+  }
+}

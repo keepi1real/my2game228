@@ -1,0 +1,59 @@
+{
+  "props": {
+    "image": "quarry-props.png",
+    "sourceSize": [
+      2048,
+      768
+    ],
+    "size": [
+      1024,
+      384
+    ],
+    "sprites": {
+      "boulder": {
+        "rect": [
+          0,
+          0,
+          380,
+          384
+        ],
+        "anchor": [
+          188,
+          362
+        ]
+      },
+      "wall": {
+        "rect": [
+          380,
+          170,
+          370,
+          200
+        ],
+        "anchor": [
+          185,
+          184
+        ]
+      },
+      "outcrop": {
+        "rect": [
+          750,
+          0,
+          274,
+          384
+        ],
+        "anchor": [
+          137,
+          367
+        ]
+      }
+    }
+  },
+  "ground": {
+    "image": "quarry-ground.png",
+    "size": [
+      512,
+      512
+    ],
+    "tiling": "repeat; not guaranteed mathematically seamless"
+  }
+}
