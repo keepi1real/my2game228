@@ -1,0 +1,25 @@
+name: Three frontiers checks
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm i --no-save @napi-rs/canvas@0.1.100
+      - name: Build and validate the three independent expeditions
+        run: |
+          node tools/v27-build.cjs --publish
+          node tools/test-v27-integration.cjs
+          for test in tools/test-v27-wharf*.cjs tools/test-v27-quarry*.cjs tools/test-v27-darkroot*.cjs; do
+            if [ -f "$test" ]; then node "$test"; fi
+          done
+      - name: Preserve legacy checkpoints
+        run: node tools/test-v21-chapter-compat.cjs
