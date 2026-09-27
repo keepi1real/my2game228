@@ -25,6 +25,9 @@ function extendChapters(html,levels){
   replace("roster=j.levelId==='tideobservatory'?ExpeditionLevels.get(j.levelId).encounters:rosters[j.levelId]","roster=rosters[j.levelId]||ExpeditionLevels.get(j.levelId).encounters");
   replace("(g.journey.levelId==='tideobservatory'?ExpeditionLevels.get(g.journey.levelId).encounters:rosters[g.journey.levelId])[s.bossPhases]","(rosters[g.journey.levelId]||ExpeditionLevels.get(g.journey.levelId).encounters)[s.bossPhases]");
   replace('const profile=j=>modes[j.difficulty]||modes.veteran;',ids.map(id=>'ranks.'+id+'=1;').join('')+'\n  const profile=j=>modes[j.difficulty]||modes.veteran;');
+  replace("g.hero.name.toUpperCase()+' / ЭТАЖ '+g.floor","g.hero.name.toUpperCase()+("+member('g.journey')+"?' / ИСПЫТАНИЕ':' / ЭТАЖ '+g.floor)");
+  replace("'КАРТА · ЭТАЖ '+g.floor","("+member('g.journey')+"?'КАРТА ИСПЫТАНИЯ':'КАРТА · ЭТАЖ '+g.floor)");
+  replace('if(AdventureRun.enabled(j))j.notice=',"if("+member('j')+")j.notice=level.name+' · самостоятельный поход. Найдите хранителя. M — карта.';else if(AdventureRun.enabled(j))j.notice=");
   return html;
 }
 module.exports={extendChapters,palettes};
