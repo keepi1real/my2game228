@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Осколки Рассвета · Три рубежа</title><style>html,body{margin:0;min-height:100%;background:#10191b;color:#eadfc6;font:16px/1.6 system-ui,sans-serif}main{max-width:36rem;margin:18vh auto;padding:2rem;text-align:center}progress{width:100%;accent-color:#bba876}small{color:#9caaa5}button{padding:12px 24px;cursor:pointer}</style></head><body><main id="status" role="status"><h1>Три новых рубежа</h1><p>Загружаем карты, героев и анимации…</p><progress></progress><p><small>Первый запуск включает все игровые ассеты и может занять некоторое время.</small></p></main><script>
+(async()=>{try{
+  const manifestResponse=await fetch('payload.json?v=27',{cache:'no-cache'});
+  if(!manifestResponse.ok)throw Error('HTTP '+manifestResponse.status);
+  const manifest=await manifestResponse.json();
+  const chunks=await Promise.all(manifest.parts.map(async name=>{const response=await fetch(name+'?'+manifest.sha256.slice(0,12),{cache:'no-cache'});if(!response.ok)throw Error('HTTP '+response.status);return new Uint8Array(await response.arrayBuffer());}));
+  const header=new Uint8Array(chunks.reduce((n,c)=>n+c.length,0));let offset=0;for(const c of chunks){header.set(c,offset);offset+=c.length;}
+  if(header.length!==manifest.bytes)throw Error('Incomplete game payload');
+  if(crypto.subtle){const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',header))).map(x=>x.toString(16).padStart(2,'0')).join('');if(hash!==manifest.sha256)throw Error('Payload checksum mismatch');}
+  const bytes=header.buffer;
+  const html=header[0]===31&&header[1]===139?await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text():new TextDecoder().decode(bytes);
+  if(!html.includes('window.V27Preview')||!html.includes('v27-menu'))throw Error('Invalid game payload');
+  document.open();document.write(html);document.close();
+}catch(error){document.getElementById('status').innerHTML='<h1>Не удалось загрузить игру</h1><p>Проверьте соединение и повторите загрузку.</p><button onclick="location.reload()">Повторить</button>';console.error(error);}})();
+</script></body></html>
