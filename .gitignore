@@ -1,6 +1,8 @@
 # Сборка. Воспроизводится командой `node tools/bundle.js`, поэтому в историю не идёт:
 # файл содержит все ассеты в base64 и переписывался бы целиком на каждый коммит.
 dist/
+three-frontiers/*.bin
+three-frontiers/payload.json
 
 # Папка для упаковки в APK. Воспроизводится командой `node tools/make-webdir.js`.
 www/

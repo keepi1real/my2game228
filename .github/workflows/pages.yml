@@ -76,6 +76,13 @@ jobs:
           node tools/test-v21-observatory-boss.cjs
           node tools/test-v21-tide-observatory-meridian.cjs
           node tools/test-v21-published-route-save.cjs
+      - name: Собрать и проверить три новых рубежа
+        run: |
+          node tools/v27-build.cjs --publish
+          node tools/test-v27-integration.cjs
+          for test in tools/test-v27-wharf*.cjs tools/test-v27-quarry*.cjs tools/test-v27-darkroot*.cjs; do
+            if [ -f "$test" ]; then node "$test"; fi
+          done
       - name: Собрать папку для раздачи
         run: node tools/make-webdir.js --pwa www
       - name: Проверить запуск в браузере

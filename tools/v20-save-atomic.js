@@ -4,7 +4,9 @@
   'use strict';
   if(window.V20SaveAtomic)return;
   const key=SeamlessFloor.key;
-  if(!['undermountain-biomes-v20-preview','undermountain-biomes-v21-observatory-preview'].includes(key))
+  const isolated=name=>['undermountain-biomes-v20-preview','undermountain-biomes-v21-observatory-preview',
+    'undermountain-v27-drownedwharf','undermountain-v27-redquarry','undermountain-v27-darkroot'].includes(name);
+  if(!isolated(key))
     throw new Error('v20-save-atomic requires isolated preview storage');
   let storage;
   try {storage=localStorage;} catch (_) {
@@ -17,22 +19,24 @@
   const get=target.getItem,set=target.setItem;
   let active=null;
   target.getItem=function(name) {
-    if(this===storage&&active&&String(name)===key) {
+    if(this===storage&&active&&String(name)===active.key) {
       if(active.written)return active.value;
       active.readBeforeWrite=true;
     }
     return get.apply(this,arguments);
   };
   target.setItem=function(name,value) {
-    if(this===storage&&active&&String(name)===key) {
+    if(this===storage&&active&&String(name)===active.key) {
       active.value=String(value);active.written=true;return;
     }
     return set.apply(this,arguments);
   };
   const previous=Game.prototype.saveJourney;
   Game.prototype.saveJourney=function(...args) {
-    if(!this.journey?.seamless||active)return previous.apply(this,args);
-    const transaction={written:false,value:null,readBeforeWrite:false},timer=this.journey.saveTimer;
+    if(!this.journey?.seamless||active||!isolated(SeamlessFloor.key))return previous.apply(this,args);
+    // A standalone map can switch its checkpoint after this patch is installed.
+    // Capture the destination for this entire save, including wrapper reads.
+    const transaction={key:SeamlessFloor.key,written:false,value:null,readBeforeWrite:false},timer=this.journey.saveTimer;
     active=transaction;let result;
     try {result=previous.apply(this,args);} finally {active=null;}
     if(transaction.written) {
@@ -48,7 +52,7 @@
           if(!data||data.version!==4||data.seed!==this.journey.seed)throw Error('Invalid pending checkpoint');
           data.mapVersion=20;transaction.value=JSON.stringify(data);
         }
-        set.call(storage,key,transaction.value);
+        set.call(storage,transaction.key,transaction.value);
       } catch (_) {
         this.journey.saveTimer=timer;
         this.journey.notice='Не удалось сохранить забег. Игра продолжается.';
